@@ -12,21 +12,30 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import com.example.togetherapp.ui.theme.TogetherAppTheme
+import com.yandex.mapkit.MapKitFactory
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
+
+        // 1. ИНИЦИАЛИЗАЦИЯ
+        MapKitFactory.setApiKey("e4f380a3-c4fa-4ddf-87e4-ac585da8b4f2")
+        MapKitFactory.initialize(this)
+
         setContent {
-            TogetherAppTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Greeting(
-                        name = "Android",
-                        modifier = Modifier.padding(innerPadding)
-                    )
-                }
-            }
+            // Здесь вызываем наш созданный тестовый экран
+            TestMapScreen()
         }
+    }
+    // 2. Жизненный цикл, иначе карта будет пустой или зависнет
+    override fun onStart() {
+        super.onStart()
+        MapKitFactory.getInstance().onStart()
+    }
+
+    override fun onStop() {
+        MapKitFactory.getInstance().onStop()
+        super.onStop()
     }
 }
 
