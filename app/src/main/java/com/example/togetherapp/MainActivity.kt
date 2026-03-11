@@ -17,16 +17,17 @@ import androidx.compose.ui.tooling.preview.Preview
 import com.example.togetherapp.presentation.screens.home.HomeActivity
 import com.example.togetherapp.ui.theme.TogetherAppTheme
 
-class MainActivity : AppCompatActivity() {
-    private lateinit var login_Activity_button: Button
+class MainActivity : ComponentActivity() {
+
+    private lateinit var loginButton: Button
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.login_screen)
 
-        login_Activity_button = findViewById(R.id.login_button)
+        loginButton = findViewById(R.id.login_button)
 
-        login_Activity_button.setOnClickListener { 
+        loginButton.setOnClickListener {
             val intent = Intent(this, HomeActivity::class.java)
             startActivity(intent)
         }
