@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="add_place">Добавить место</string>
+    <string name="new_collection_title">Новая подборка</string>
+    <string name="collection_name_hint">Название подборки</string>
+    <string name="collection_description_hint">Описание подборки</string>
+    <string name="main_page">Главная</string>
+    <string name="map">Карта</string>
+    <string name="collections">Подборки</string>
+    <string name="profile">Профиль</string>
+    <string name="my_collections">Мои подборки</string>
+    <string name="enter_email">Введите почту</string>
+    <string name="check_email">Проверьте почту и пароль или попробуйте позже</string>
+    <string name="enter_password">Введите пароль</string>
+    <string name="enter_password_again">Введите пароль снова</string>
+    <string name="enter">Войти</string>
+    <string name="or">или</string>
+    <string name="register">Зарегистрироваться</string>
+    <string name="check_network">Попробуйте повторить попытку или проверьте сеть</string>
+    <string name="check_data">Проверяем данные, это займет несколько секунд</string>
+    <string name="enter_name">Введите имя</string>
+    <string name="cant_login">Не удалось зарегистрироваться</string>
+    <string name="used_email">Эта почта уже используется</string>
+    <string name="sending_data">Отправляем данные</string>
+    <string name="please_wait">Пожалуйста, подождите</string>
+    <string name="save_collection">Сохранить подборку</string>
+</resources>

@@ -7,12 +7,20 @@
     android:orientation="vertical"
     android:padding="24dp">
 
+    <TextView
+        android:id="@+id/textView2"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:paddingBottom="60dp"
+        android:text="@string/check_network" />
+
     <EditText
         android:id="@+id/username_input"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:gravity="center"
-        android:hint="Введите почту" />
+        android:hint="@string/enter_email" />
 
     <EditText
         android:id="@+id/password_input"
@@ -20,7 +28,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="12dp"
         android:gravity="center"
-        android:hint="Введите пароль"
+        android:hint="@string/enter_password"
         android:inputType="textPassword" />
 
     <Button
@@ -28,7 +36,8 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
-        android:text="Войти" />
+        android:text="@string/enter"
+        android:textColor="#CC0000" />
 
     <ProgressBar
         android:id="@+id/login_progress"
@@ -51,19 +60,12 @@
         android:layout_height="wrap_content"
         android:gravity="center"
         android:padding="12dp"
-        android:text="или" />
+        android:text="@string/or" />
 
     <Button
         android:id="@+id/log_register_button"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Зарегистрироваться" />
-
-    <TextView
-        android:id="@+id/textView7"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:gravity="center"
-        android:text="Продолжить без входа" />
+        android:text="@string/register" />
 
 </LinearLayout>
