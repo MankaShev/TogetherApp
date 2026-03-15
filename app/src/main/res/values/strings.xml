@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">TogetherApp</string>
+    <string name="continue_without_login">Продолжить без входа</string>
 </resources>
