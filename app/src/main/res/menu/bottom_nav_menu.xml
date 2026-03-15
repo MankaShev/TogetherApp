@@ -4,7 +4,7 @@
 
 
     <item
-        android:id="@+id/navigation_collections"
+        android:id="@+id/navigation_home"
         android:icon="@drawable/ic_home"
         android:title=""
         app:showAsAction="always"/>
@@ -16,7 +16,7 @@
         app:showAsAction="always" />
 
     <item
-        android:id="@+id/navigation_personal"
+        android:id="@+id/navigation_collections"
         android:icon="@drawable/ic_collections"
         android:title=""
         app:showAsAction="always" />

@@ -1,8 +1,8 @@
 package com.example.togetherapp.presentation.state
 
-sealed class UiState<T> {
+sealed class UiState<out T> {
 
-    class Loading : UiState<Nothing>()
+    object  Loading : UiState<Nothing>()
 
     data class Success<T>(
         val data: T
