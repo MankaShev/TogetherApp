@@ -3,49 +3,22 @@ package com.example.togetherapp
 import android.content.Intent
 import android.os.Bundle
 import android.widget.Button
-import androidx.activity.ComponentActivity
-import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
-import androidx.appcompat.app.AppCompatActivity
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.appcompat.app.AppCompatActivity // Используем AppCompatActivity для XML
 import com.example.togetherapp.presentation.screens.home.HomeActivity
-import com.example.togetherapp.ui.theme.TogetherAppTheme
 
-class MainActivity : ComponentActivity() {
-
-    private lateinit var loginButton: Button
+class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.login_screen)
 
-        loginButton = findViewById(R.id.login_button)
+        val loginButton = findViewById<Button>(R.id.login_button)
 
         loginButton.setOnClickListener {
+            // Временная логика: просто переход на главный экран
             val intent = Intent(this, HomeActivity::class.java)
             startActivity(intent)
+            finish() // Закрываем экран логина, чтобы нельзя было вернуться назад кнопкой
         }
-    }
-}
-
-@Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Вместе",
-        modifier = modifier
-    )
-}
-
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    TogetherAppTheme {
-        Greeting("Android")
     }
 }
