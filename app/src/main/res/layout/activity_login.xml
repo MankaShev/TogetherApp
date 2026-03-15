@@ -1,0 +1,176 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/login_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <!-- ФОРМА ВХОДА (центрирована) -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:orientation="vertical"
+        android:padding="24dp">
+
+        <EditText
+            android:id="@+id/username_input"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:hint="Введите почту"
+            android:inputType="textEmailAddress" />
+
+        <EditText
+            android:id="@+id/password_input"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:gravity="center"
+            android:hint="Введите пароль"
+            android:inputType="textPassword" />
+
+        <Button
+            android:id="@+id/login_button"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="Войти" />
+
+        <TextView
+            android:id="@+id/or_text"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:padding="12dp"
+            android:text="или" />
+
+        <Button
+            android:id="@+id/log_register_button"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Зарегистрироваться" />
+
+        <Button
+            android:id="@+id/continue_without_login_btn"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:text="Продолжить без входа"
+            android:layout_marginTop="8dp"
+            android:background="@null"
+            android:textColor="@android:color/black"
+            android:textAllCaps="false"
+            style="?android:attr/borderlessButtonStyle"/>
+
+    </LinearLayout>
+
+    <!-- КОНТЕЙНЕР СОСТОЯНИЙ (поверх формы) -->
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@android:color/white"
+        android:visibility="gone">
+
+        <!-- Загрузка -->
+        <LinearLayout
+            android:id="@+id/layoutLoading"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <ProgressBar
+                android:id="@+id/login_progress"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="Проверка данных..."
+                android:textSize="16sp"
+                android:textStyle="bold" />
+
+        </LinearLayout>
+
+        <!-- Ошибка ввода -->
+        <LinearLayout
+            android:id="@+id/layoutErrorInput"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:padding="24dp"
+            android:visibility="gone">
+
+            <TextView
+                android:id="@+id/tvErrorInputTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Ошибка ввода"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:layout_marginTop="16dp" />
+
+            <TextView
+                android:id="@+id/login_error_text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="Проверьте правильность введенных данных"
+                android:textSize="14sp"
+                android:gravity="center"
+                android:textColor="@android:color/black" />
+
+            <Button
+                android:id="@+id/btnRetryInput"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="24dp"
+                android:text="Исправить" />
+
+        </LinearLayout>
+
+        <!-- Ошибка сети -->
+        <LinearLayout
+            android:id="@+id/layoutErrorNetwork"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:padding="24dp"
+            android:visibility="gone">
+
+            <ImageView
+                android:layout_width="80dp"
+                android:layout_height="80dp"
+                android:src="@drawable/ic_oops" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Нет подключения"
+                android:textSize="18sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="Проверьте подключение к интернету"
+                android:textSize="14sp" />
+
+            <Button
+                android:id="@+id/btnRetryNetwork"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="24dp"
+                android:text="Повторить" />
+
+        </LinearLayout>
+
+    </FrameLayout>
+
+</FrameLayout>
