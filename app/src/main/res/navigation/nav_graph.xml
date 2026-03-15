@@ -26,16 +26,17 @@
         android:label="Мои подборки"
         tools:layout="@layout/fragment_collections"/>
 
-    <!-- Профиль -->
+    <!-- Профиль (ВРЕМЕННО ОТКЛЮЧЕН, пока нет ViewModel и State) -->
+    <!--
     <fragment
         android:id="@+id/profileFragment"
         android:name="com.example.togetherapp.presentation.screens.profile.ProfileFragment"
         android:label="Профиль"
         tools:layout="@layout/fragment_profile">
-
         <action
             android:id="@+id/action_profileFragment_to_collectionsFragment"
             app:destination="@id/collectionsFragment" />
     </fragment>
+    -->
 
 </navigation>

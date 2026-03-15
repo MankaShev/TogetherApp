@@ -29,7 +29,7 @@
                 android:layout_height="32dp"
                 android:layout_gravity="center"
                 android:src="@drawable/ic_plus"
-                android:tint="@colors/gray" />
+                app:tint="@color/gray" />
 
         </FrameLayout>
 
