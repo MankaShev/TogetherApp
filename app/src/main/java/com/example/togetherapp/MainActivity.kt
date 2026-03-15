@@ -2,50 +2,69 @@ package com.example.togetherapp
 
 import android.content.Intent
 import android.os.Bundle
-import android.widget.Button
-import androidx.activity.ComponentActivity
-import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
 import androidx.appcompat.app.AppCompatActivity
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
-import com.example.togetherapp.presentation.screens.home.HomeActivity
-import com.example.togetherapp.ui.theme.TogetherAppTheme
+import androidx.navigation.findNavController
+import androidx.navigation.ui.setupWithNavController
+import com.example.togetherapp.databinding.ActivityMainBinding
+import com.google.android.material.bottomnavigation.BottomNavigationView
 
-class MainActivity : ComponentActivity() {
+class MainActivity : AppCompatActivity()  {
 
-    private lateinit var loginButton: Button
+    private lateinit var binding: ActivityMainBinding
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.login_screen)
 
-        loginButton = findViewById(R.id.login_button)
+        // Сначала устанавливаем binding
+        binding = ActivityMainBinding.inflate(layoutInflater)
+        setContentView(binding.root)
 
-        loginButton.setOnClickListener {
-            val intent = Intent(this, HomeActivity::class.java)
-            startActivity(intent)
+        // Проверяем авторизацию, но НЕ закрываем MainActivity,
+        // потому что есть кнопка "Продолжить без входа"
+        val sharedPref = getSharedPreferences("app_prefs", MODE_PRIVATE)
+        val isLoggedIn = sharedPref.getBoolean("is_logged_in", false)
+
+        // Настраиваем навигацию
+        setupNavigation()
+
+        // Если пользователь не авторизован, показываем Toast
+        if (!isLoggedIn) {
+            android.widget.Toast.makeText(
+                this,
+                "Вы вошли без авторизации",
+                android.widget.Toast.LENGTH_SHORT
+            ).show()
         }
     }
-}
 
-@Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Вместе",
-        modifier = modifier
-    )
-}
+    private fun setupNavigation() {
+        val navView: BottomNavigationView = binding.bottomNavigation
+        val navController = findNavController(R.id.nav_host_fragment)
 
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    TogetherAppTheme {
-        Greeting("Android")
+        // Связываем BottomNavigation с навигацией
+        navView.setupWithNavController(navController)
+
+        // Обработка выбора пунктов меню (опционально)
+        navView.setOnItemSelectedListener { menuItem ->
+            when (menuItem.itemId) {
+                R.id.navigation_home -> {
+                    navController.navigate(R.id.homeFragment)
+                    true
+                }
+                R.id.navigation_map -> {
+                    navController.navigate(R.id.mapFragment)
+                    true
+                }
+                R.id.navigation_collections -> {
+                    navController.navigate(R.id.collectionsFragment)
+                    true
+                }
+//                R.id.navigation_profile -> {
+//                    navController.navigate(R.id.profileFragment)
+//                    true
+//                }
+                else -> false
+            }
+        }
     }
 }
