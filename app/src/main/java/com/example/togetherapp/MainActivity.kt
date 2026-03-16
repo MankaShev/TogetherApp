@@ -1,24 +1,64 @@
 package com.example.togetherapp
 
-import android.content.Intent
 import android.os.Bundle
-import android.widget.Button
-import androidx.appcompat.app.AppCompatActivity // Используем AppCompatActivity для XML
-import com.example.togetherapp.presentation.screens.home.HomeActivity
+import android.widget.Toast
+import androidx.appcompat.app.AppCompatActivity
+import androidx.navigation.fragment.NavHostFragment
+import androidx.navigation.ui.setupWithNavController
+import com.example.togetherapp.databinding.ActivityMainBinding
+import com.google.android.material.bottomnavigation.BottomNavigationView
 
 class MainActivity : AppCompatActivity() {
 
+    private lateinit var binding: ActivityMainBinding
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.login_screen)
 
-        val loginButton = findViewById<Button>(R.id.login_button)
+        // Устанавливаем binding
+        binding = ActivityMainBinding.inflate(layoutInflater)
+        setContentView(binding.root)
 
-        loginButton.setOnClickListener {
-            // Временная логика: просто переход на главный экран
-            val intent = Intent(this, HomeActivity::class.java)
-            startActivity(intent)
-            finish() // Закрываем экран логина, чтобы нельзя было вернуться назад кнопкой
+        // Проверяем авторизацию
+        val sharedPref = getSharedPreferences("app_prefs", MODE_PRIVATE)
+        val isLoggedIn = sharedPref.getBoolean("is_logged_in", false)
+
+        // Настройка навигации
+        setupNavigation()
+
+        if (!isLoggedIn) {
+            Toast.makeText(this, "Вы вошли без авторизации", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun setupNavigation() {
+        val navView: BottomNavigationView = binding.bottomNavigation
+
+        // Получаем NavController из NavHostFragment
+        val navHostFragment =
+            supportFragmentManager.findFragmentById(R.id.nav_host_fragment) as NavHostFragment
+        val navController = navHostFragment.navController
+
+        // Связываем BottomNavigationView с NavController
+        navView.setupWithNavController(navController)
+
+        // Если нужно кастомное поведение при выборе
+        navView.setOnItemSelectedListener { menuItem ->
+            when (menuItem.itemId) {
+                R.id.navigation_home -> {
+                    navController.navigate(R.id.homeFragment)
+                    true
+                }
+                R.id.navigation_map -> {
+                    navController.navigate(R.id.mapFragment)
+                    true
+                }
+                R.id.navigation_collections -> {
+                    navController.navigate(R.id.collectionsFragment)
+                    true
+                }
+                else -> false
+            }
         }
     }
 }
