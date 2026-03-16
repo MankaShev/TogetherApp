@@ -3,44 +3,67 @@
     android:id="@+id/login_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
     android:gravity="center"
+    android:orientation="vertical"
     android:padding="24dp">
 
     <EditText
         android:id="@+id/username_input"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:hint="Почта" />
+        android:gravity="center"
+        android:hint="Введите почту" />
 
     <EditText
         android:id="@+id/password_input"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:hint="Пароль"
-        android:inputType="textPassword"
-        android:layout_marginTop="12dp" />
+        android:layout_marginTop="12dp"
+        android:gravity="center"
+        android:hint="Введите пароль"
+        android:inputType="textPassword" />
 
     <Button
         android:id="@+id/login_button"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Вход"
-        android:layout_marginTop="16dp" />
+        android:layout_marginTop="16dp"
+        android:text="Войти" />
 
     <ProgressBar
         android:id="@+id/login_progress"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:visibility="gone"
-        android:layout_marginTop="16dp" />
+        android:layout_marginTop="16dp"
+        android:visibility="gone" />
 
     <TextView
         android:id="@+id/login_error_text"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
         android:textColor="@android:color/holo_red_dark"
-        android:visibility="gone"
-        android:layout_marginTop="16dp" />
+        android:visibility="gone" />
+
+    <TextView
+        android:id="@+id/or_text"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:padding="12dp"
+        android:text="или" />
+
+    <Button
+        android:id="@+id/log_register_button"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Зарегистрироваться" />
+
+    <TextView
+        android:id="@+id/textView7"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:text="Продолжить без входа" />
 
 </LinearLayout>
