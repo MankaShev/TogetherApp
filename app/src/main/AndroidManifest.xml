@@ -2,7 +2,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     package="com.example.togetherapp">
-
+    <!-- Разрешение для доступа к точной и приблизительной геопозиции -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <!-- Разрешение для доступа в интернет -->
     <uses-permission android:name="android.permission.INTERNET" />
 
@@ -18,27 +20,22 @@
 
         <!-- LoginActivity - стартовая -->
         <activity
-            android:name=".LoginActivity"
+            android:name="com.example.togetherapp.presentation.screens.login.LoginActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
 
         <!-- RegisterActivity -->
         <activity
-            android:name=".RegisterActivity"
+            android:name="com.example.togetherapp.presentation.screens.register.RegisterActivity"
             android:exported="false" />
 
         <!-- MainActivity -->
         <activity
             android:name=".MainActivity"
-            android:exported="false" />
-
-        <activity
-            android:name=".presentation.screens.map.MapActivity"
             android:exported="false" />
 
     </application>
