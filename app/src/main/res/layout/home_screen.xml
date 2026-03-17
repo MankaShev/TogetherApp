@@ -6,17 +6,13 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/white"
-    android:gravity="center"
-    tools:context=".MainActivity">
+    tools:context=".presentation.screens.home.HomeActivity">
 
-    <!-- Toolbar/App Bar -->
     <com.google.android.material.appbar.AppBarLayout
         android:id="@+id/appBarLayout"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent">
 
         <androidx.appcompat.widget.Toolbar
@@ -26,7 +22,6 @@
             android:background="@color/purple_500"
             app:title="Мои подборки"
             app:titleTextColor="@android:color/white" />
-
     </com.google.android.material.appbar.AppBarLayout>
 
     <LinearLayout
@@ -38,11 +33,11 @@
         android:gravity="center"
         android:orientation="vertical"
         android:visibility="gone"
-        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintBottom_toTopOf="@+id/go_to_map_button"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.497"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/appBarLayout"
         tools:visibility="visible">
 
         <ImageView
@@ -60,15 +55,6 @@
             android:textSize="18sp"
             android:textStyle="bold" />
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:gravity="center"
-            android:text="Начните искать места\nи сохраняйте понравившиеся."
-            android:textColor="@android:color/darker_gray"
-            android:textSize="14sp" />
-
         <Button
             android:id="@+id/createFirstCollectionButton"
             android:layout_width="wrap_content"
@@ -76,36 +62,25 @@
             android:layout_marginTop="16dp"
             android:text="Создать подборку"
             android:textAllCaps="false" />
-
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/recyclerView"
-            android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_marginTop="8dp"
-            android:clipToPadding="false"
-            android:paddingBottom="16dp"
-            android:scrollbars="vertical"
-            app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
-            tools:itemCount="5"
-            tools:listitem="@layout/card_view" />
-
-        <Button
-            android:id="@+id/go_to_map_button"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Button"
-            tools:layout_editor_absoluteX="158dp"
-            tools:layout_editor_absoluteY="508dp"
-            tools:text="К картам" />
-
     </LinearLayout>
 
-    <ProgressBar
-        android:id="@+id/progressBar"
-        android:layout_width="wrap_content"
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/recyclerView"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        app:layout_constraintBottom_toTopOf="@+id/go_to_map_button"
+        app:layout_constraintTop_toBottomOf="@+id/appBarLayout"
+        app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+        tools:listitem="@layout/card_view" />
+
+    <Button
+        android:id="@+id/go_to_map_button"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:src="@drawable/search"
-        android:visibility="gone"
+        android:layout_margin="16dp"
+        android:text="Перейти к карте"
+        android:textAllCaps="false"
+        android:backgroundTint="@color/purple_500"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent" />
