@@ -17,6 +17,8 @@ import com.example.togetherapp.databinding.FragmentCollectionsBinding
 import com.example.togetherapp.presentation.state.CollectionsUiState
 import com.example.togetherapp.presentation.viewmodel.CollectionsViewModel
 import com.example.togetherapp.presentation.viewmodel.CollectionsViewModelFactory
+import com.example.togetherapp.presentation.viewmodel.SharedMapViewModel
+import com.example.togetherapp.domain.models.CollectionModel
 
 class PersonalCollectionsFragment : Fragment() {
 
@@ -28,6 +30,7 @@ class PersonalCollectionsFragment : Fragment() {
 
     // Singleton SessionManager
     private lateinit var sessionManager: SessionManager
+    private lateinit var sharedViewModel: SharedMapViewModel
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -43,10 +46,26 @@ class PersonalCollectionsFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        sharedViewModel = ViewModelProvider(requireActivity())[SharedMapViewModel::class.java]
+
         initViewModel()
         setupRecyclerView()
         setupListeners()
         setupObservers()
+
+        // ✅ ДОБАВИТЬ: Проверка выбранного места
+        checkSelectedPlace()
+    }
+
+    private fun checkSelectedPlace() {
+        sharedViewModel.selectedPlace.observe(viewLifecycleOwner) { place ->
+            if (place == null) {
+                Toast.makeText(requireContext(),
+                    "Сначала выберите место на карте",
+                    Toast.LENGTH_SHORT).show()
+                findNavController().popBackStack()
+            }
+        }
     }
 
     /** Инициализация ViewModel */
@@ -66,11 +85,29 @@ class PersonalCollectionsFragment : Fragment() {
                 )
             },
             onItemClick = { collection ->
-                Toast.makeText(requireContext(), collection.title, Toast.LENGTH_SHORT).show()
+                // ✅ ИЗМЕНИТЬ: вместо Toast вызываем добавление в коллекцию
+                addPlaceToCollection(collection)
             }
         )
         binding.rvCollections.layoutManager = LinearLayoutManager(requireContext())
         binding.rvCollections.adapter = adapter
+    }
+
+    private fun addPlaceToCollection(collection: CollectionModel) {
+        val place = sharedViewModel.selectedPlace.value
+        if (place == null) {
+            Toast.makeText(requireContext(),
+                "Ошибка: место не выбрано",
+                Toast.LENGTH_SHORT).show()
+            findNavController().popBackStack()
+            return
+        }
+
+        // Показываем прогресс
+        binding.progressLoading.visibility = View.VISIBLE
+
+        // Вызываем добавление в БД
+        viewModel.addPlaceToCollection(collection.id, collection.title, place)
     }
 
     /** Обработчики кнопок */
@@ -97,8 +134,27 @@ class PersonalCollectionsFragment : Fragment() {
         viewModel.state.observe(viewLifecycleOwner) { state ->
             renderState(state)
         }
-    }
 
+        // ✅ ДОБАВИТЬ: Наблюдение за результатом добавления
+        viewModel.addPlaceResult.observe(viewLifecycleOwner) { result ->
+            binding.progressLoading.visibility = View.GONE
+
+            result?.let {
+                if (it.isSuccess) {
+                    // Успех - уведомляем карту и возвращаемся
+                    sharedViewModel.onPlaceAddedToCollection(it.collectionName, it.collectionId)
+                    sharedViewModel.clearSelectedPlace()
+                    findNavController().popBackStack()
+                } else {
+                    // Ошибка
+                    Toast.makeText(requireContext(),
+                        "Ошибка: ${it.errorMessage ?: "Не удалось добавить место"}",
+                        Toast.LENGTH_LONG).show()
+                }
+                viewModel.consumeAddPlaceResult()
+            }
+        }
+    }
     /** Отображение состояния UI */
     private fun renderState(state: CollectionsUiState) {
         hideAllStates()
