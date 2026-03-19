@@ -9,5 +9,6 @@ data class CollectionModel(
     val title: String,
     val description: String?,
     val access_type: String,
-    val created_at: String
+    val created_at: String,
+    val placesCount: Int = 0
 )

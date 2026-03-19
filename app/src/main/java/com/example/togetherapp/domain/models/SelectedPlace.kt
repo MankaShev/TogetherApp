@@ -1,14 +1,10 @@
 package com.example.togetherapp.domain.models
 
-import kotlinx.serialization.Serializable
-
-@Serializable
-data class Place(
-    val id: Int = 0,
+data class SelectedPlace(
     val external_id: Int? = null,
     val title: String,
-    val description: String? = null,
     val longitude: Double,
     val latitude: Double,
+    val description: String? = null,
     val address: String? = null
 )

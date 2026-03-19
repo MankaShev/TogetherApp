@@ -59,10 +59,14 @@ class PersonalCollectionsAdapter(
         }
     }
 
-    override fun getItemCount() = items.size
+    override fun getItemCount(): Int = items.size
 
     // ViewHolder для кнопки "Создать подборку"
-    class CreateButtonViewHolder(itemView: View, onClick: () -> Unit) : RecyclerView.ViewHolder(itemView) {
+    class CreateButtonViewHolder(
+        itemView: View,
+        onClick: () -> Unit
+    ) : RecyclerView.ViewHolder(itemView) {
+
         private val buttonTitle: TextView? = itemView.findViewById(R.id.tvTitle)
 
         init {
@@ -84,11 +88,24 @@ class PersonalCollectionsAdapter(
         private val nameView: TextView = itemView.findViewById(R.id.collectionName)
         private val descriptionView: TextView = itemView.findViewById(R.id.collectionDescription)
         private val placesView: TextView = itemView.findViewById(R.id.numPlaces)
+        private val accessTypeView: TextView = itemView.findViewById(R.id.collectionAccessType)
 
         fun bind(collection: CollectionModel) {
             nameView.text = collection.title
             descriptionView.text = collection.description ?: ""
 
+            placesView.text = when (collection.placesCount) {
+                1 -> "1 место"
+                2, 3, 4 -> "${collection.placesCount} места"
+                else -> "${collection.placesCount} мест"
+            }
+
+            accessTypeView.text = when (collection.access_type) {
+                "private" -> "Приватная"
+                "public" -> "Публичная"
+                "friends" -> "Для друзей"
+                else -> collection.access_type
+            }
 
             itemView.setOnClickListener {
                 onItemClick(collection)
