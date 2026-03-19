@@ -58,10 +58,25 @@ class MapFragment : Fragment() {
     // Текущее выбранное место
     private var currentPlace: SelectedPlace? = null
 
+    // Создаём слой «User Location» для работы с местоположением пользователя
+    private lateinit var userLocationLayer: com.yandex.mapkit.user_location.UserLocationLayer
+
+    // Лаунчер: "слушает" ответ пользователя из системного окна (для местоположения)
+    private lateinit var locationPermissionLauncher: androidx.activity.result.ActivityResultLauncher<String>
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         // Инициализируем библиотеку. Ключ уже стоит (пока что) в MainActivity, тут просто "подключаемся".
         MapKitFactory.initialize(requireContext())
+        // Инициализируем лаунчер: он "слушает" ответ пользователя из системного окна
+        locationPermissionLauncher = registerForActivityResult(
+            androidx.activity.result.contract.ActivityResultContracts.RequestPermission()
+        ) { isGranted: Boolean ->
+            if (isGranted) {
+                // Если пользователь нажал "Разрешить" — летим камерой к нему
+                moveToUserWithZoom()
+            }
+        }
     }
 
     override fun onCreateView(
@@ -79,10 +94,10 @@ class MapFragment : Fragment() {
         // Получаем ссылку на MapView
         mapView = binding.mapContainer.mapview
 
-        // ✅ НОВОЕ: Инициализация SharedViewModel
+        // Инициализация SharedViewModel
         sharedViewModel = ViewModelProvider(requireActivity())[SharedMapViewModel::class.java]
 
-        // ✅ НОВОЕ: Наблюдение за результатом добавления в коллекцию
+        // Наблюдение за результатом добавления в коллекцию
         observeNavigationEvents()
 
         // Инициализируем BottomSheet.
@@ -144,11 +159,11 @@ class MapFragment : Fragment() {
         // Запускаем базовую настройку камеры
         setupMap()
 
-        // ✅ НОВОЕ: Добавляем обработчик кнопки в карточке места
+        // Добавляем обработчик кнопки в карточке места
         setupAddToCollectionButton()
     }
 
-    // ✅ НОВЫЙ МЕТОД: Наблюдение за результатом добавления в коллекцию
+    // Наблюдение за результатом добавления в коллекцию
     private fun observeNavigationEvents() {
         sharedViewModel.navigationEvent.observe(viewLifecycleOwner) { event ->
             when (event) {
@@ -164,7 +179,7 @@ class MapFragment : Fragment() {
                     binding.mapContainer.addToCollectionButton.text = "Добавлено ✓"
                     binding.mapContainer.addToCollectionButton.isEnabled = false
 
-                    // ✅ НОВОЕ: После успешного добавления очищаем текущее выбранное место,
+                    // После успешного добавления очищаем текущее выбранное место,
                     // чтобы пользователь явно выбрал новое место для следующего добавления
                     currentPlace = null
 
@@ -176,7 +191,7 @@ class MapFragment : Fragment() {
         }
     }
 
-    // ✅ НОВЫЙ МЕТОД: Настройка кнопки "Добавить в коллекцию"
+    // Настройка кнопки "Добавить в коллекцию"
     private fun setupAddToCollectionButton() {
         binding.mapContainer.addToCollectionButton.setOnClickListener {
             // Проверяем, есть ли выбранное место
@@ -205,14 +220,17 @@ class MapFragment : Fragment() {
     // ФУНКЦИЯ setupMap: Начальная настройка положения карты
     private fun setupMap() {
         val map = mapView.mapWindow.map
+        val mapKit = MapKitFactory.getInstance()
 
-        // Ставим камеру на Томск (ТГУ) TODO Сделать запрос на местоположение пользователя и двигать карту туда
-        map.move(
-            com.yandex.mapkit.map.CameraPosition(
-                Point(56.471116, 84.946636),
-                16.5f, 0.0f, 0.0f
-            )
-        )
+        // Ставим Томск по дефолту
+        map.move(com.yandex.mapkit.map.CameraPosition(Point(56.471116, 84.946636), 16.5f, 0.0f, 0.0f))
+
+        // Инициализируем слой
+        userLocationLayer = mapKit.createUserLocationLayer(mapView.mapWindow)
+        userLocationLayer.isVisible = true
+
+        // Запускаем проверку разрешений
+        checkPermissionsAndMove()
 
         // Создаем объект слушателя
         mapInputListener = object : com.yandex.mapkit.map.InputListener {
@@ -222,11 +240,11 @@ class MapFragment : Fragment() {
                 binding.mapContainer.placeAddressText.text = ""
                 binding.mapContainer.categoryText.text = ""
 
-                // ✅ НОВОЕ: Сбрасываем кнопку в исходное состояние при новом выборе места
+                // Сбрасываем кнопку в исходное состояние при новом выборе места
                 binding.mapContainer.addToCollectionButton.text = "Добавить в коллекцию"
                 binding.mapContainer.addToCollectionButton.isEnabled = true
 
-                // ✅ НОВОЕ: Сбрасываем текущее место перед новым поиском
+                // Сбрасываем текущее место перед новым поиском
                 currentPlace = null
 
                 // Скрываем шторку перед новым поиском
@@ -242,6 +260,42 @@ class MapFragment : Fragment() {
         }
         // Привязываем его к карте
         map.addInputListener(mapInputListener!!)
+    }
+
+    // Функция для проверки наличия разрешения на местоположение
+    private fun checkPermissionsAndMove() {
+        if (androidx.core.content.ContextCompat.checkSelfPermission(
+                requireContext(),
+                android.Manifest.permission.ACCESS_FINE_LOCATION
+            ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        ) {
+            // Разрешение уже есть - показываем устрашающее уведомление
+            Toast.makeText(
+                requireContext(),
+                "Подождите пару секунд, сейчас мы вас найдем:)",
+                android.widget.Toast.LENGTH_LONG
+            ).show()
+            // и летим картой к пользователю
+            moveToUserWithZoom()
+        } else {
+            // Разрешения нет — вызываем то самое окно (ну разреши, пж)
+            locationPermissionLauncher.launch(android.Manifest.permission.ACCESS_FINE_LOCATION)
+        }
+    }
+
+    private fun moveToUserWithZoom() {
+        mapView.postDelayed({
+            userLocationLayer.cameraPosition()?.target?.let { userPoint ->
+                mapView.mapWindow.map.move(
+                    com.yandex.mapkit.map.CameraPosition(userPoint, 16.5f, 0f, 0f),
+                    com.yandex.mapkit.Animation(com.yandex.mapkit.Animation.Type.SMOOTH, 1.5f),
+                    null
+                )
+            } ?: run {
+                // Если мы еще не нашли пользователя — пробуем снова (т.к. GPS может дольше 2 секунд отдавать результат)
+                moveToUserWithZoom()
+            }
+        }, 2000)
     }
 
     private fun startSearch(point: Point) {
@@ -271,7 +325,7 @@ class MapFragment : Fragment() {
 
                         android.util.Log.d("MapStep", "ЭТАП 2 ПРОЙДЕН: Найдена организация: $name")
 
-                        // ✅ НОВОЕ: Создаем объект Place и сохраняем
+                        // Создаем объект Place и сохраняем
                         currentPlace = SelectedPlace(
                             external_id = (point.latitude * point.longitude).toInt(),
                             title = name,
@@ -281,7 +335,7 @@ class MapFragment : Fragment() {
                             address = address
                         )
 
-                        // ✅ НОВОЕ: Сбрасываем текст кнопки
+                        // Сбрасываем текст кнопки
                         binding.mapContainer.addToCollectionButton.text = "Добавить в коллекцию"
                         binding.mapContainer.addToCollectionButton.isEnabled = true
 
@@ -296,7 +350,7 @@ class MapFragment : Fragment() {
                         // Если в этой точке вообще нет бизнеса (например, газон или пустая дорога)
                         android.util.Log.d("MapStep", "В этой точке нет организаций")
 
-                        // ✅ НОВОЕ: Сбрасываем текущее место
+                        // Сбрасываем текущее место
                         currentPlace = null
 
                         // Скрываем шторку
@@ -306,7 +360,7 @@ class MapFragment : Fragment() {
 
                 override fun onSearchError(error: com.yandex.runtime.Error) {
                     android.util.Log.e("MapStep", "Ошибка поиска: $error")
-                    // ✅ НОВОЕ: Сбрасываем текущее место при ошибке
+                    // Сбрасываем текущее место при ошибке
                     currentPlace = null
                 }
             }
@@ -388,7 +442,7 @@ class MapFragment : Fragment() {
         // Очищаем ссылку на биндинг, чтобы не было утечек памяти
         _binding = null
 
-        // ✅ НОВОЕ: Очищаем текущее место
+        // Очищаем текущее место
         currentPlace = null
     }
 }
