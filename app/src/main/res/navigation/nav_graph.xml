@@ -26,6 +26,12 @@
         android:label="Мои подборки"
         tools:layout="@layout/fragment_collections">
 
+        <!-- ✅ НОВОЕ: аргумент для режима -->
+        <argument
+            android:name="isAddingMode"
+            app:argType="boolean"
+            android:defaultValue="false" />
+
         <!-- Переход на экран создания коллекции -->
         <action
             android:id="@+id/action_collectionsFragment_to_createCollectionFragment"

@@ -13,6 +13,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.togetherapp.presentation.screens.login.LoginActivity
 import com.example.togetherapp.data.local.SessionManager
 import com.example.togetherapp.data.repository.CollectionRepositoryImpl
+import com.example.togetherapp.data.repository.PlaceRepositoryImpl
 import com.example.togetherapp.databinding.FragmentCollectionsBinding
 import com.example.togetherapp.presentation.state.CollectionsUiState
 import com.example.togetherapp.presentation.viewmodel.CollectionsViewModel
@@ -24,7 +25,7 @@ class PersonalCollectionsFragment : Fragment() {
 
     private var _binding: FragmentCollectionsBinding? = null
     private val binding get() = _binding!!
-
+    private var isAddingMode: Boolean = false
     private lateinit var viewModel: CollectionsViewModel
     private lateinit var adapter: PersonalCollectionsAdapter
 
@@ -45,32 +46,19 @@ class PersonalCollectionsFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-
+        isAddingMode = arguments?.getBoolean("isAddingMode", false) ?: false
         sharedViewModel = ViewModelProvider(requireActivity())[SharedMapViewModel::class.java]
 
         initViewModel()
         setupRecyclerView()
         setupListeners()
         setupObservers()
-
-        // ✅ ДОБАВИТЬ: Проверка выбранного места
-        checkSelectedPlace()
-    }
-
-    private fun checkSelectedPlace() {
-        sharedViewModel.selectedPlace.observe(viewLifecycleOwner) { place ->
-            if (place == null) {
-                Toast.makeText(requireContext(),
-                    "Сначала выберите место на карте",
-                    Toast.LENGTH_SHORT).show()
-                findNavController().popBackStack()
-            }
-        }
     }
 
     /** Инициализация ViewModel */
     private fun initViewModel() {
-        val repository = CollectionRepositoryImpl(sessionManager)
+        val placeRepository = PlaceRepositoryImpl()
+        val repository = CollectionRepositoryImpl(sessionManager, placeRepository)
         val factory = CollectionsViewModelFactory(repository)
         viewModel = ViewModelProvider(this, factory)[CollectionsViewModel::class.java]
     }
@@ -85,8 +73,15 @@ class PersonalCollectionsFragment : Fragment() {
                 )
             },
             onItemClick = { collection ->
-                // ✅ ИЗМЕНИТЬ: вместо Toast вызываем добавление в коллекцию
-                addPlaceToCollection(collection)
+                if (isAddingMode) {
+                    addPlaceToCollection(collection)
+                } else {
+                    Toast.makeText(
+                        requireContext(),
+                        "Открыта коллекция: ${collection.title}",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
             }
         )
         binding.rvCollections.layoutManager = LinearLayoutManager(requireContext())
@@ -96,10 +91,11 @@ class PersonalCollectionsFragment : Fragment() {
     private fun addPlaceToCollection(collection: CollectionModel) {
         val place = sharedViewModel.selectedPlace.value
         if (place == null) {
-            Toast.makeText(requireContext(),
-                "Ошибка: место не выбрано",
-                Toast.LENGTH_SHORT).show()
-            findNavController().popBackStack()
+            Toast.makeText(
+                requireContext(),
+                "Сначала выберите место на карте",
+                Toast.LENGTH_SHORT
+            ).show()
             return
         }
 
@@ -147,14 +143,17 @@ class PersonalCollectionsFragment : Fragment() {
                     findNavController().popBackStack()
                 } else {
                     // Ошибка
-                    Toast.makeText(requireContext(),
+                    Toast.makeText(
+                        requireContext(),
                         "Ошибка: ${it.errorMessage ?: "Не удалось добавить место"}",
-                        Toast.LENGTH_LONG).show()
+                        Toast.LENGTH_LONG
+                    ).show()
                 }
                 viewModel.consumeAddPlaceResult()
             }
         }
     }
+
     /** Отображение состояния UI */
     private fun renderState(state: CollectionsUiState) {
         hideAllStates()

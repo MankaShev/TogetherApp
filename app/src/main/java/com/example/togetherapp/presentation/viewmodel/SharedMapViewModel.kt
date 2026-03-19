@@ -3,15 +3,15 @@ package com.example.togetherapp.presentation.viewmodel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
-import com.example.togetherapp.domain.models.Place
+import com.example.togetherapp.domain.models.SelectedPlace
 
 class SharedMapViewModel : ViewModel() {
 
     private val _navigationEvent = MutableLiveData<NavigationEvent?>()
     val navigationEvent: LiveData<NavigationEvent?> = _navigationEvent
 
-    private val _selectedPlace = MutableLiveData<Place?>()
-    val selectedPlace: LiveData<Place?> = _selectedPlace
+    private val _selectedPlace = MutableLiveData<SelectedPlace?>()
+    val selectedPlace: LiveData<SelectedPlace?> = _selectedPlace
 
     sealed class NavigationEvent {
         data class BackToMapWithResult(
@@ -27,7 +27,7 @@ class SharedMapViewModel : ViewModel() {
         )
     }
 
-    fun setSelectedPlace(place: Place) {
+    fun setSelectedPlace(place: SelectedPlace) {
         _selectedPlace.value = place
     }
 
