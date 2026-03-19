@@ -5,6 +5,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
+import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.togetherapp.databinding.FragmentMapBinding
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.yandex.mapkit.MapKitFactory
@@ -15,6 +16,7 @@ import com.yandex.mapkit.search.SearchManager
 import com.yandex.mapkit.search.SearchManagerType
 import com.yandex.mapkit.search.SearchType
 import com.yandex.mapkit.search.Session
+import com.yandex.mapkit.map.VisibleRegionUtils
 
 class MapFragment : Fragment() {
 
@@ -40,6 +42,9 @@ class MapFragment : Fragment() {
 
     // bottomSheetBehavior: Управляет логикой "всплывания" шторки (меняет состояние шторки (спрятана/открыта) из кода).
     private var bottomSheetBehavior: BottomSheetBehavior<View>? = null
+
+    // Поле для адаптера поиска (работа с поисковой строкой)
+    private lateinit var searchAdapter: SearchAdapter
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -72,6 +77,51 @@ class MapFragment : Fragment() {
 
         // Создаем SearchManager (для того, чтобы искать данные по нажатию на карту)
         searchManager = SearchFactory.getInstance().createSearchManager(SearchManagerType.COMBINED)
+
+        // Инициализируем RecyclerView и Адаптер (чтобы можно было листать список ответов на запрос)
+        // В лямбде описываем, что делать при клике на элемент списка
+        searchAdapter = SearchAdapter { item ->
+            val point = item.obj?.geometry?.firstOrNull()?.point
+            if (point != null) {
+                // Плавно перемещаем камеру к выбранному месту
+                mapView.mapWindow.map.move(
+                    com.yandex.mapkit.map.CameraPosition(point, 17.0f, 0.0f, 0.0f),
+                    com.yandex.mapkit.Animation(com.yandex.mapkit.Animation.Type.SMOOTH, 1f),
+                    null
+                )
+                // Прячем список и клавиатуру
+                binding.cvSearchResults.visibility = View.GONE
+                binding.etSearch.clearFocus()
+
+                // Пока что вызываем рабочий поиск startSearch, чтобы открылась шторка
+                // TODO Сделать так, чтобы передавалась уже сама информация о месте в шторку
+                startSearch(point)
+            }
+        }
+
+        // Настраиваем RecyclerView
+        binding.rvSearch.apply {
+            layoutManager = LinearLayoutManager(requireContext())
+            adapter = searchAdapter
+        }
+
+        binding.etSearch.setOnQueryTextListener(object : androidx.appcompat.widget.SearchView.OnQueryTextListener {
+            override fun onQueryTextSubmit(query: String?): Boolean {
+                if (!query.isNullOrEmpty()) {
+                    startTextSearch(query)
+                    binding.etSearch.clearFocus()
+                }
+                return true
+            }
+
+            override fun onQueryTextChange(newText: String?): Boolean {
+                // Если текст стерли — прячем список
+                if (newText.isNullOrEmpty()) {
+                    binding.cvSearchResults.visibility = View.GONE
+                }
+                return true
+            }
+        })
 
         // Запускаем базовую настройку камеры
         setupMap()
@@ -151,6 +201,58 @@ class MapFragment : Fragment() {
 
                 override fun onSearchError(error: com.yandex.runtime.Error) {
                     android.util.Log.e("MapStep", "Ошибка поиска: $error")
+                }
+            }
+        )
+    }
+
+    private fun startTextSearch(query: String) {
+        val searchOptions = com.yandex.mapkit.search.SearchOptions().apply {
+            searchTypes = SearchType.BIZ.value // Ищем организации
+            resultPageSize = 7 //  Пока берем 7 первых результатов
+        }
+
+        // Получаем текущую видимую область карты
+        val visibleRegion = mapView.mapWindow.map.visibleRegion
+
+        // Запускаем поиск по строке
+        searchSession = searchManager.submit(
+            query,
+            VisibleRegionUtils.toPolygon(visibleRegion),
+            searchOptions,
+            object : Session.SearchListener {
+                override fun onSearchResponse(response: com.yandex.mapkit.search.Response) {
+                    val results = response.collection.children
+                    android.util.Log.d("MapSearch", "Найдено объектов: ${results.size}")
+
+                    if (results.isNotEmpty()) {
+                        searchAdapter.submitList(results) // Отправляем данные в список
+                        binding.cvSearchResults.visibility = View.VISIBLE // Показываем карточку со списком
+                    } else {
+                        binding.cvSearchResults.visibility = View.GONE // Прячем, если ничего не нашли
+                    }
+
+                    // Выводим результаты в логи для проверки
+                    results.forEachIndexed { index, searchResult ->
+                        val obj = searchResult.obj
+                        val metadata = obj?.metadataContainer?.getItem(com.yandex.mapkit.search.BusinessObjectMetadata::class.java)
+
+                        if (metadata != null) {
+                            val name = metadata.name
+                            val address = metadata.address.formattedAddress
+                            val point = obj.geometry.firstOrNull()?.point
+
+                            android.util.Log.d("MapSearch", "#$index: $name | Адрес: $address | Координаты: ${point?.latitude}, ${point?.longitude}")
+                        }
+                    }
+
+                    if (results.isEmpty()) {
+                        android.util.Log.d("MapSearch", "Ничего не найдено")
+                    }
+                }
+
+                override fun onSearchError(error: com.yandex.runtime.Error) {
+                    android.util.Log.e("MapSearch", "Ошибка текстового поиска: $error")
                 }
             }
         )

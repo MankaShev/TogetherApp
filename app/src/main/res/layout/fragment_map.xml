@@ -9,11 +9,16 @@
     <androidx.appcompat.widget.SearchView
         android:id="@+id/etSearch"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_margin="16dp"
+        android:layout_height="56dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginTop="48dp"
         android:background="@drawable/search_background"
-        android:padding="20dp"
-        app:queryHint="Поиск подборок и мест..." />
+        android:elevation="4dp"
+        app:iconifiedByDefault="false"
+        app:queryHint="Поиск мест..."
+        app:queryBackground="@android:color/transparent"
+        android:imeOptions="actionSearch" />
 
     <!-- КОНТЕЙНЕР СОСТОЯНИЙ -->
     <FrameLayout
@@ -26,6 +31,24 @@
             layout="@layout/map_screen"
             android:visibility="visible" />
 
+        <androidx.cardview.widget.CardView
+            android:id="@+id/cvSearchResults"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/etSearch"
+            android:layout_marginStart="16dp"
+            android:layout_marginEnd="16dp"
+            android:layout_marginTop="4dp"
+            android:visibility="gone"
+            app:cardCornerRadius="8dp"
+            app:cardElevation="6dp">
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/rvSearch"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:maxHeight="300dp" />
+        </androidx.cardview.widget.CardView>
 
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/rvPopularCollections"
