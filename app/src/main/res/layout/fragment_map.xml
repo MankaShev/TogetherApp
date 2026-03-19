@@ -103,6 +103,13 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="24dp"
                 android:text="Повторить" />
+            <!-- В карточке места (bottom sheet) должна быть кнопка -->
+            <Button
+                android:id="@+id/addToCollectionButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Добавить в коллекцию"
+                android:layout_margin="16dp"/>
         </LinearLayout>
     </FrameLayout>
 </LinearLayout>

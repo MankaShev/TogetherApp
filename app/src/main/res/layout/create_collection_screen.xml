@@ -14,31 +14,31 @@
         android:textSize="24sp"
         android:textStyle="bold"
         android:textColor="@color/black"
+        android:layout_marginTop="24dp"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginTop="24dp"/>
+        app:layout_constraintEnd_toEndOf="parent" />
 
     <!-- Карточка с изображением -->
     <androidx.cardview.widget.CardView
         android:id="@+id/imageCardView"
         android:layout_width="0dp"
         android:layout_height="200dp"
+        android:layout_marginTop="24dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
         app:cardCornerRadius="12dp"
         app:cardElevation="4dp"
         app:layout_constraintTop_toBottomOf="@id/titleTextView"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginTop="24dp"
-        android:layout_marginStart="16dp"
-        android:layout_marginEnd="16dp">
+        app:layout_constraintEnd_toEndOf="parent">
 
         <ImageView
             android:id="@+id/collectionImageView"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:scaleType="centerCrop"
-            android:background="@color/white"/>
+            android:background="@color/white"
+            android:scaleType="centerCrop" />
     </androidx.cardview.widget.CardView>
 
     <!-- Название коллекции -->
@@ -46,19 +46,19 @@
         android:id="@+id/nameTextInputLayout"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        app:layout_constraintTop_toBottomOf="@id/imageCardView"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
         android:layout_marginTop="24dp"
         android:layout_marginStart="16dp"
         android:layout_marginEnd="16dp"
-        android:hint="@string/collection_name_hint">
+        android:hint="@string/collection_name_hint"
+        app:layout_constraintTop_toBottomOf="@id/imageCardView"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
 
         <com.google.android.material.textfield.TextInputEditText
             android:id="@+id/nameEditText"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:maxLines="1"/>
+            android:maxLines="1" />
     </com.google.android.material.textfield.TextInputLayout>
 
     <!-- Описание коллекции -->
@@ -66,55 +66,97 @@
         android:id="@+id/descriptionTextInputLayout"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        app:layout_constraintTop_toBottomOf="@id/nameTextInputLayout"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
         android:layout_marginTop="16dp"
         android:layout_marginStart="16dp"
         android:layout_marginEnd="16dp"
-        android:hint="@string/collection_description_hint">
+        android:hint="@string/collection_description_hint"
+        app:layout_constraintTop_toBottomOf="@id/nameTextInputLayout"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
 
         <com.google.android.material.textfield.TextInputEditText
             android:id="@+id/descriptionEditText"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:maxLines="3"/>
+            android:maxLines="3" />
     </com.google.android.material.textfield.TextInputLayout>
+
+    <!-- Тип коллекции -->
+    <TextView
+        android:id="@+id/accessTypeLabel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="Тип коллекции"
+        android:textColor="@color/black"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        app:layout_constraintTop_toBottomOf="@id/descriptionTextInputLayout"
+        app:layout_constraintStart_toStartOf="@id/descriptionTextInputLayout" />
+
+    <RadioGroup
+        android:id="@+id/accessTypeRadioGroup"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:orientation="vertical"
+        app:layout_constraintTop_toBottomOf="@id/accessTypeLabel"
+        app:layout_constraintStart_toStartOf="@id/descriptionTextInputLayout"
+        app:layout_constraintEnd_toEndOf="@id/descriptionTextInputLayout">
+
+        <RadioButton
+            android:id="@+id/radioPrivate"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Приватная" />
+
+        <RadioButton
+            android:id="@+id/radioPublic"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Публичная" />
+
+        <RadioButton
+            android:id="@+id/radioFriends"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Для друзей" />
+    </RadioGroup>
 
     <!-- Кнопка "Добавить место" -->
     <Button
         android:id="@+id/addPlaceButton"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:text="@string/add_place"
-        android:background="@color/purple_500"
-        android:textColor="@android:color/white"
-        android:padding="12dp"
         android:layout_marginTop="24dp"
         android:layout_marginStart="16dp"
         android:layout_marginEnd="16dp"
+        android:background="@color/purple_500"
         android:gravity="center"
+        android:padding="12dp"
+        android:text="@string/add_place"
         android:textAllCaps="false"
-        app:layout_constraintTop_toBottomOf="@id/descriptionTextInputLayout"
+        android:textColor="@android:color/white"
+        app:layout_constraintTop_toBottomOf="@id/accessTypeRadioGroup"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"/>
+        app:layout_constraintEnd_toEndOf="parent" />
 
     <!-- Кнопка "Сохранить коллекцию" -->
     <Button
         android:id="@+id/saveCollectionButton"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:text="@string/save_collection"
-        android:background="@color/purple_500"
-        android:textColor="@android:color/white"
-        android:padding="12dp"
         android:layout_marginTop="16dp"
         android:layout_marginStart="16dp"
         android:layout_marginEnd="16dp"
+        android:background="@color/purple_500"
         android:gravity="center"
+        android:padding="12dp"
+        android:text="@string/save_collection"
         android:textAllCaps="false"
+        android:textColor="@android:color/white"
         app:layout_constraintTop_toBottomOf="@id/addPlaceButton"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"/>
+        app:layout_constraintEnd_toEndOf="parent" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

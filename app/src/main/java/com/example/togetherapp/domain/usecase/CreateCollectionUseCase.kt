@@ -8,8 +8,9 @@ class CreateCollectionUseCase(
 
     suspend fun execute(
         name: String,
-        description: String
+        description: String,
+        accessType: String
     ) {
-        repository.createCollection(name, description)
+        repository.createCollection(name, description, accessType)
     }
 }

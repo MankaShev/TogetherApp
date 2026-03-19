@@ -4,19 +4,25 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Toast
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.ViewModelProvider
+import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.example.togetherapp.R
 import com.example.togetherapp.databinding.FragmentMapBinding
+import com.example.togetherapp.domain.models.SelectedPlace
+import com.example.togetherapp.presentation.viewmodel.SharedMapViewModel
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.yandex.mapkit.MapKitFactory
 import com.yandex.mapkit.geometry.Point
+import com.yandex.mapkit.map.VisibleRegionUtils
 import com.yandex.mapkit.mapview.MapView
 import com.yandex.mapkit.search.SearchFactory
 import com.yandex.mapkit.search.SearchManager
 import com.yandex.mapkit.search.SearchManagerType
 import com.yandex.mapkit.search.SearchType
 import com.yandex.mapkit.search.Session
-import com.yandex.mapkit.map.VisibleRegionUtils
 
 class MapFragment : Fragment() {
 
@@ -46,6 +52,12 @@ class MapFragment : Fragment() {
     // Поле для адаптера поиска (работа с поисковой строкой)
     private lateinit var searchAdapter: SearchAdapter
 
+    // Shared ViewModel для связи с коллекциями
+    private lateinit var sharedViewModel: SharedMapViewModel
+
+    // Текущее выбранное место
+    private var currentPlace: SelectedPlace? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         // Инициализируем библиотеку. Ключ уже стоит (пока что) в MainActivity, тут просто "подключаемся".
@@ -66,6 +78,12 @@ class MapFragment : Fragment() {
 
         // Получаем ссылку на MapView
         mapView = binding.mapContainer.mapview
+
+        // ✅ НОВОЕ: Инициализация SharedViewModel
+        sharedViewModel = ViewModelProvider(requireActivity())[SharedMapViewModel::class.java]
+
+        // ✅ НОВОЕ: Наблюдение за результатом добавления в коллекцию
+        observeNavigationEvents()
 
         // Инициализируем BottomSheet.
         // Мы ищем вью с id "bottomSheet" внутри контейнера mapContainer.
@@ -125,6 +143,63 @@ class MapFragment : Fragment() {
 
         // Запускаем базовую настройку камеры
         setupMap()
+
+        // ✅ НОВОЕ: Добавляем обработчик кнопки в карточке места
+        setupAddToCollectionButton()
+    }
+
+    // ✅ НОВЫЙ МЕТОД: Наблюдение за результатом добавления в коллекцию
+    private fun observeNavigationEvents() {
+        sharedViewModel.navigationEvent.observe(viewLifecycleOwner) { event ->
+            when (event) {
+                is SharedMapViewModel.NavigationEvent.BackToMapWithResult -> {
+                    // Показываем уведомление
+                    Toast.makeText(
+                        requireContext(),
+                        "✅ Место добавлено в «${event.collectionName}»",
+                        Toast.LENGTH_SHORT
+                    ).show()
+
+                    // Здесь можно обновить карточку места (например, подсветить, что уже добавлено)
+                    binding.mapContainer.addToCollectionButton.text = "Добавлено ✓"
+                    binding.mapContainer.addToCollectionButton.isEnabled = false
+
+                    // ✅ НОВОЕ: После успешного добавления очищаем текущее выбранное место,
+                    // чтобы пользователь явно выбрал новое место для следующего добавления
+                    currentPlace = null
+
+                    // Сбрасываем событие
+                    sharedViewModel.consumeNavigationEvent()
+                }
+                null -> {}
+            }
+        }
+    }
+
+    // ✅ НОВЫЙ МЕТОД: Настройка кнопки "Добавить в коллекцию"
+    private fun setupAddToCollectionButton() {
+        binding.mapContainer.addToCollectionButton.setOnClickListener {
+            // Проверяем, есть ли выбранное место
+            val place = currentPlace
+            if (place != null) {
+                // Сохраняем место в SharedViewModel
+                sharedViewModel.setSelectedPlace(place)
+
+                // Переходим на экран коллекций
+                findNavController().navigate(
+                    R.id.collectionsFragment,
+                    Bundle().apply {
+                        putBoolean("isAddingMode", true)
+                    }
+                )
+            } else {
+                Toast.makeText(
+                    requireContext(),
+                    "Сначала выберите место на карте",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+        }
     }
 
     // ФУНКЦИЯ setupMap: Начальная настройка положения карты
@@ -145,6 +220,15 @@ class MapFragment : Fragment() {
                 // Очищаем шторку
                 binding.mapContainer.placeNameText.text = ""
                 binding.mapContainer.placeAddressText.text = ""
+                binding.mapContainer.categoryText.text = ""
+
+                // ✅ НОВОЕ: Сбрасываем кнопку в исходное состояние при новом выборе места
+                binding.mapContainer.addToCollectionButton.text = "Добавить в коллекцию"
+                binding.mapContainer.addToCollectionButton.isEnabled = true
+
+                // ✅ НОВОЕ: Сбрасываем текущее место перед новым поиском
+                currentPlace = null
+
                 // Скрываем шторку перед новым поиском
                 bottomSheetBehavior?.state = BottomSheetBehavior.STATE_HIDDEN
 
@@ -153,7 +237,8 @@ class MapFragment : Fragment() {
                 // Передаем координаты в поиск
                 startSearch(point)
             }
-            override fun onMapLongTap(map: com.yandex.mapkit.map.Map, point: Point) {} //для корректного наследования
+
+            override fun onMapLongTap(map: com.yandex.mapkit.map.Map, point: Point) {}
         }
         // Привязываем его к карте
         map.addInputListener(mapInputListener!!)
@@ -186,6 +271,20 @@ class MapFragment : Fragment() {
 
                         android.util.Log.d("MapStep", "ЭТАП 2 ПРОЙДЕН: Найдена организация: $name")
 
+                        // ✅ НОВОЕ: Создаем объект Place и сохраняем
+                        currentPlace = SelectedPlace(
+                            external_id = (point.latitude * point.longitude).toInt(),
+                            title = name,
+                            latitude = point.latitude,
+                            longitude = point.longitude,
+                            description = null,
+                            address = address
+                        )
+
+                        // ✅ НОВОЕ: Сбрасываем текст кнопки
+                        binding.mapContainer.addToCollectionButton.text = "Добавить в коллекцию"
+                        binding.mapContainer.addToCollectionButton.isEnabled = true
+
                         // Обновляем текст в шторке
                         binding.mapContainer.placeNameText.text = name
                         binding.mapContainer.placeAddressText.text = address
@@ -196,11 +295,19 @@ class MapFragment : Fragment() {
                     } else {
                         // Если в этой точке вообще нет бизнеса (например, газон или пустая дорога)
                         android.util.Log.d("MapStep", "В этой точке нет организаций")
+
+                        // ✅ НОВОЕ: Сбрасываем текущее место
+                        currentPlace = null
+
+                        // Скрываем шторку
+                        bottomSheetBehavior?.state = BottomSheetBehavior.STATE_HIDDEN
                     }
                 }
 
                 override fun onSearchError(error: com.yandex.runtime.Error) {
                     android.util.Log.e("MapStep", "Ошибка поиска: $error")
+                    // ✅ НОВОЕ: Сбрасываем текущее место при ошибке
+                    currentPlace = null
                 }
             }
         )
@@ -226,10 +333,10 @@ class MapFragment : Fragment() {
                     android.util.Log.d("MapSearch", "Найдено объектов: ${results.size}")
 
                     if (results.isNotEmpty()) {
-                        searchAdapter.submitList(results) // Отправляем данные в список
-                        binding.cvSearchResults.visibility = View.VISIBLE // Показываем карточку со списком
+                        searchAdapter.submitList(results)
+                        binding.cvSearchResults.visibility = View.VISIBLE
                     } else {
-                        binding.cvSearchResults.visibility = View.GONE // Прячем, если ничего не нашли
+                        binding.cvSearchResults.visibility = View.GONE
                     }
 
                     // Выводим результаты в логи для проверки
@@ -242,7 +349,10 @@ class MapFragment : Fragment() {
                             val address = metadata.address.formattedAddress
                             val point = obj.geometry.firstOrNull()?.point
 
-                            android.util.Log.d("MapSearch", "#$index: $name | Адрес: $address | Координаты: ${point?.latitude}, ${point?.longitude}")
+                            android.util.Log.d(
+                                "MapSearch",
+                                "#$index: $name | Адрес: $address | Координаты: ${point?.latitude}, ${point?.longitude}"
+                            )
                         }
                     }
 
@@ -277,5 +387,8 @@ class MapFragment : Fragment() {
         super.onDestroyView()
         // Очищаем ссылку на биндинг, чтобы не было утечек памяти
         _binding = null
+
+        // ✅ НОВОЕ: Очищаем текущее место
+        currentPlace = null
     }
 }

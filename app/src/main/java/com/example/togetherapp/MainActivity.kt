@@ -7,12 +7,16 @@ import androidx.navigation.fragment.NavHostFragment
 import androidx.navigation.ui.setupWithNavController
 import com.example.togetherapp.databinding.ActivityMainBinding
 import com.google.android.material.bottomnavigation.BottomNavigationView
+import com.yandex.mapkit.MapKitFactory
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        // Устанавливаем API-ключ (только один раз за жизнь процесса)
+
+
         super.onCreate(savedInstanceState)
 
         // Устанавливаем binding

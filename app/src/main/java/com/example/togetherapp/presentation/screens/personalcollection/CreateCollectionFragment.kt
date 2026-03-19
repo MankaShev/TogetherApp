@@ -12,15 +12,16 @@ import androidx.navigation.fragment.findNavController
 import com.example.togetherapp.data.local.SessionManager
 import com.example.togetherapp.data.remote.SupabaseClient
 import com.example.togetherapp.databinding.CreateCollectionScreenBinding
+import io.github.jan.supabase.postgrest.from
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
-import io.github.jan.supabase.postgrest.from
 
 @Serializable
 data class CollectionInsertDto(
     val title: String,
     val description: String? = null,
-    val user_id: Int
+    val user_id: Int,
+    val access_type: String
 )
 
 class CreateCollectionFragment : Fragment() {
@@ -49,15 +50,30 @@ class CreateCollectionFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        // По умолчанию можно выбрать приватную подборку
+        binding.radioPrivate.isChecked = true
+
         binding.saveCollectionButton.setOnClickListener {
-            val name = binding.nameEditText.text?.toString().orEmpty()
-            val description = binding.descriptionEditText.text?.toString()
+            val name = binding.nameEditText.text?.toString().orEmpty().trim()
+            val description = binding.descriptionEditText.text?.toString()?.trim()
+
+            val accessType = when (binding.accessTypeRadioGroup.checkedRadioButtonId) {
+                binding.radioPrivate.id -> "private"
+                binding.radioPublic.id -> "public"
+                binding.radioFriends.id -> "friends"
+                else -> ""
+            }
 
             if (name.isBlank()) {
                 binding.nameTextInputLayout.error = "Название не может быть пустым"
                 return@setOnClickListener
             } else {
                 binding.nameTextInputLayout.error = null
+            }
+
+            if (accessType.isBlank()) {
+                Toast.makeText(requireContext(), "Выберите тип коллекции", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
             }
 
             val userId = sessionManager.getUserId()
@@ -69,26 +85,37 @@ class CreateCollectionFragment : Fragment() {
                 return@setOnClickListener
             }
 
-            saveCollection(name, description, userId)
+            saveCollection(
+                name = name,
+                description = description,
+                userId = userId,
+                accessType = accessType
+            )
         }
     }
 
-    private fun saveCollection(name: String, description: String?, userId: Int) {
+    private fun saveCollection(
+        name: String,
+        description: String?,
+        userId: Int,
+        accessType: String
+    ) {
         lifecycleScope.launch {
             try {
                 val collectionDto = CollectionInsertDto(
                     title = name,
                     description = description,
-                    user_id = userId
+                    user_id = userId,
+                    access_type = accessType
                 )
 
                 Log.i(TAG, "Saving collection: $collectionDto")
 
-                val result = SupabaseClient.supabase
+                SupabaseClient.supabase
                     .from("collections")
-                    .insert(collectionDto) // передаем DTO вместо mapOf
+                    .insert(collectionDto)
 
-                Log.i(TAG, "Collection saved successfully: $result")
+                Log.i(TAG, "Collection saved successfully")
                 Toast.makeText(requireContext(), "Коллекция сохранена!", Toast.LENGTH_SHORT).show()
 
                 // Обновляем предыдущий фрагмент
@@ -100,7 +127,11 @@ class CreateCollectionFragment : Fragment() {
 
             } catch (e: Exception) {
                 Log.e(TAG, "Error saving collection", e)
-                Toast.makeText(requireContext(), "Ошибка при сохранении: ${e.message}", Toast.LENGTH_LONG).show()
+                Toast.makeText(
+                    requireContext(),
+                    "Ошибка при сохранении: ${e.message}",
+                    Toast.LENGTH_LONG
+                ).show()
             }
         }
     }
