@@ -14,11 +14,11 @@ import com.example.togetherapp.presentation.screens.login.LoginActivity
 import com.example.togetherapp.data.local.SessionManager
 import com.example.togetherapp.data.repository.CollectionRepositoryImpl
 import com.example.togetherapp.databinding.FragmentCollectionsBinding
+import com.example.togetherapp.domain.models.CollectionModel
 import com.example.togetherapp.presentation.state.CollectionsUiState
 import com.example.togetherapp.presentation.viewmodel.CollectionsViewModel
 import com.example.togetherapp.presentation.viewmodel.CollectionsViewModelFactory
 import com.example.togetherapp.presentation.viewmodel.SharedMapViewModel
-import com.example.togetherapp.domain.models.CollectionModel
 
 class PersonalCollectionsFragment : Fragment() {
 
@@ -27,8 +27,6 @@ class PersonalCollectionsFragment : Fragment() {
 
     private lateinit var viewModel: CollectionsViewModel
     private lateinit var adapter: PersonalCollectionsAdapter
-
-    // Singleton SessionManager
     private lateinit var sessionManager: SessionManager
     private lateinit var sharedViewModel: SharedMapViewModel
 
@@ -38,7 +36,6 @@ class PersonalCollectionsFragment : Fragment() {
         savedInstanceState: Bundle?
     ): View {
         _binding = FragmentCollectionsBinding.inflate(inflater, container, false)
-        // Используем singleton SessionManager
         sessionManager = SessionManager.getInstance(requireContext().applicationContext)
         return binding.root
     }
@@ -53,44 +50,51 @@ class PersonalCollectionsFragment : Fragment() {
         setupListeners()
         setupObservers()
 
-        // ✅ ДОБАВИТЬ: Проверка выбранного места
-        checkSelectedPlace()
+        // УБИРАЕМ checkSelectedPlace() - он больше не нужен в onViewCreated
     }
 
-    private fun checkSelectedPlace() {
-        sharedViewModel.selectedPlace.observe(viewLifecycleOwner) { place ->
-            if (place == null) {
-                Toast.makeText(requireContext(),
-                    "Сначала выберите место на карте",
-                    Toast.LENGTH_SHORT).show()
-                findNavController().popBackStack()
-            }
-        }
-    }
-
-    /** Инициализация ViewModel */
     private fun initViewModel() {
         val repository = CollectionRepositoryImpl(sessionManager)
         val factory = CollectionsViewModelFactory(repository)
         viewModel = ViewModelProvider(this, factory)[CollectionsViewModel::class.java]
     }
 
-    /** Настройка RecyclerView */
     private fun setupRecyclerView() {
         adapter = PersonalCollectionsAdapter(
             onCreateClick = {
-                // Переход на экран создания подборки
                 findNavController().navigate(
                     com.example.togetherapp.R.id.action_collectionsFragment_to_createCollectionFragment
                 )
             },
             onItemClick = { collection ->
-                // ✅ ИЗМЕНИТЬ: вместо Toast вызываем добавление в коллекцию
-                addPlaceToCollection(collection)
+                // Проверяем, есть ли выбранное место (пришли с карты или нет)
+                val selectedPlace = sharedViewModel.selectedPlace.value
+
+                if (selectedPlace != null) {
+                    // СЦЕНАРИЙ 1: Пришли с карты - добавляем место в коллекцию
+                    addPlaceToCollection(collection)
+                } else {
+                    // СЦЕНАРИЙ 2: Просто просмотр коллекции - открываем детали
+                    openCollectionDetails(collection)
+                }
             }
         )
         binding.rvCollections.layoutManager = LinearLayoutManager(requireContext())
         binding.rvCollections.adapter = adapter
+    }
+
+    // Новый метод для открытия деталей коллекции
+    private fun openCollectionDetails(collection: CollectionModel) {
+        val bundle = Bundle().apply {
+            putInt("collectionId", collection.id)
+            putString("collectionTitle", collection.title)
+            putString("collectionDescription", collection.description ?: "")
+        }
+
+        findNavController().navigate(
+            com.example.togetherapp.R.id.action_collectionsFragment_to_collectionDetailFragment,
+            bundle
+        )
     }
 
     private fun addPlaceToCollection(collection: CollectionModel) {
@@ -103,14 +107,10 @@ class PersonalCollectionsFragment : Fragment() {
             return
         }
 
-        // Показываем прогресс
         binding.progressLoading.visibility = View.VISIBLE
-
-        // Вызываем добавление в БД
         viewModel.addPlaceToCollection(collection.id, collection.title, place)
     }
 
-    /** Обработчики кнопок */
     private fun setupListeners() {
         binding.btnLogin.setOnClickListener {
             val intent = Intent(requireContext(), LoginActivity::class.java)
@@ -129,24 +129,20 @@ class PersonalCollectionsFragment : Fragment() {
         }
     }
 
-    /** Подписка на LiveData */
     private fun setupObservers() {
         viewModel.state.observe(viewLifecycleOwner) { state ->
             renderState(state)
         }
 
-        // ✅ ДОБАВИТЬ: Наблюдение за результатом добавления
         viewModel.addPlaceResult.observe(viewLifecycleOwner) { result ->
             binding.progressLoading.visibility = View.GONE
 
             result?.let {
                 if (it.isSuccess) {
-                    // Успех - уведомляем карту и возвращаемся
                     sharedViewModel.onPlaceAddedToCollection(it.collectionName, it.collectionId)
                     sharedViewModel.clearSelectedPlace()
                     findNavController().popBackStack()
                 } else {
-                    // Ошибка
                     Toast.makeText(requireContext(),
                         "Ошибка: ${it.errorMessage ?: "Не удалось добавить место"}",
                         Toast.LENGTH_LONG).show()
@@ -155,11 +151,15 @@ class PersonalCollectionsFragment : Fragment() {
             }
         }
     }
-    /** Отображение состояния UI */
+
     private fun renderState(state: CollectionsUiState) {
         hideAllStates()
         when (state) {
-            is CollectionsUiState.Loading -> binding.progressLoading.visibility = View.VISIBLE
+            is CollectionsUiState.Loading -> {
+                if (sharedViewModel.selectedPlace.value == null) {
+                    binding.progressLoading.visibility = View.VISIBLE
+                }
+            }
             is CollectionsUiState.Unauthorized -> binding.layoutUnauthorized.visibility = View.VISIBLE
             is CollectionsUiState.Empty -> binding.layoutEmpty.visibility = View.VISIBLE
             is CollectionsUiState.Error -> {
@@ -173,7 +173,6 @@ class PersonalCollectionsFragment : Fragment() {
         }
     }
 
-    /** Скрытие всех состояний */
     private fun hideAllStates() {
         binding.progressLoading.visibility = View.GONE
         binding.layoutUnauthorized.visibility = View.GONE
