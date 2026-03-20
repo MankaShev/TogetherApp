@@ -15,6 +15,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         // Устанавливаем API-ключ (только один раз за жизнь процесса)
+        MapKitFactory.setApiKey("be661120-334b-444d-987e-c9571d4b1f53")
 
 
         super.onCreate(savedInstanceState)

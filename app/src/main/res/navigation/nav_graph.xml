@@ -20,6 +20,7 @@
         tools:layout="@layout/fragment_map" />
 
     <!-- Личные подборки -->
+    <!-- Личные подборки -->
     <fragment
         android:id="@+id/collectionsFragment"
         android:name="com.example.togetherapp.presentation.screens.personalcollection.PersonalCollectionsFragment"
@@ -36,6 +37,11 @@
         <action
             android:id="@+id/action_collectionsFragment_to_createCollectionFragment"
             app:destination="@id/createCollectionFragment" />
+
+        <!-- Переход на детальный просмотр подборки -->
+        <action
+            android:id="@+id/action_collectionsFragment_to_collectionDetailFragment"
+            app:destination="@id/collectionDetailFragment" />
     </fragment>
 
     <!-- Экран создания подборки -->
@@ -53,5 +59,11 @@
         android:label="Профиль"
         tools:layout="@layout/fragment_profile" />
     -->
+    <!-- Экран детального просмотра подборки -->
+    <fragment
+        android:id="@+id/collectionDetailFragment"
+        android:name="com.example.togetherapp.presentation.screens.personalcollection.CollectionDetailFragment"
+        android:label="Подборка"
+        tools:layout="@layout/fragment_collection_detail" />
 
 </navigation>
