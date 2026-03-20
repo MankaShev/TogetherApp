@@ -24,13 +24,13 @@
         android:layout_height="1dp"
         android:background="#F0F0F0" />
 
-    <!-- КОНТЕЙНЕР СОСТОЯНИЙ -->
+    <!-- Контейнер состояний -->
     <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:layout_marginTop="8dp">
 
-        <!-- 1. ЗАГРУЗКА -->
+        <!-- 1. Loading -->
         <ProgressBar
             android:id="@+id/progressLoading"
             android:layout_width="wrap_content"
@@ -38,9 +38,9 @@
             android:layout_gravity="center"
             android:visibility="gone" />
 
-        <!-- 2. НЕ АВТОРИЗОВАН -->
+        <!-- 2. Guest UI (НОВОЕ) -->
         <LinearLayout
-            android:id="@+id/layoutUnauthorized"
+            android:id="@+id/layoutGuest"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:orientation="vertical"
@@ -49,32 +49,44 @@
             android:visibility="gone">
 
             <ImageView
-                android:layout_width="284dp"
-                android:layout_height="328dp"
-                android:contentDescription="Unauthorized"
-                android:src="@drawable/ic_oops" />
+                android:layout_width="120dp"
+                android:layout_height="120dp"
+                android:src="@drawable/ic_profile"
+                android:alpha="0.5" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
-                android:gravity="center"
-                android:text="Чтобы посмотреть подборки, войдите в аккаунт"
-                android:textAlignment="center"
+                android:text="Вы не вошли в аккаунт"
                 android:textSize="20sp"
-                android:textStyle="bold" />
+                android:textStyle="bold"
+                android:layout_marginTop="16dp" />
 
-            <Button
-                android:id="@+id/btnLogin"
+            <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Войти"
-                android:layout_marginTop="24dp"
-                android:backgroundTint="@color/gray" />
+                android:text="Войдите, чтобы создавать и сохранять подборки"
+                android:textSize="14sp"
+                android:textColor="@android:color/darker_gray"
+                android:layout_marginTop="8dp"
+                android:textAlignment="center" />
 
+            <Button
+                android:id="@+id/btnLoginGuest"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Войти"
+                android:layout_marginTop="24dp" />
+
+            <Button
+                android:id="@+id/btnRegisterGuest"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Создать аккаунт"
+                android:layout_marginTop="8dp" />
         </LinearLayout>
 
-        <!-- 3. ПУСТО (только кнопка создания) -->
+        <!-- 3. Пусто -->
         <LinearLayout
             android:id="@+id/layoutEmpty"
             android:layout_width="match_parent"
@@ -84,7 +96,6 @@
             android:padding="24dp"
             android:visibility="gone">
 
-            <!-- В пустом состоянии показываем карточку "Создать подборку" -->
             <include
                 layout="@layout/item_collection"
                 android:id="@+id/emptyCreateButton"
@@ -104,19 +115,19 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
-                android:text=" Создайте свою первую подборку с любимыми местами"
+                android:text="Создайте свою первую подборку с любимыми местами"
                 android:textAlignment="center"
                 android:textColor="@android:color/darker_gray"
                 android:textSize="14sp" />
 
             <ImageView
-                android:layout_width="484dp"
-                android:layout_height="253dp"
-                android:src="@drawable/ic_oops" />
-
+                android:layout_width="200dp"
+                android:layout_height="200dp"
+                android:src="@drawable/ic_oops"
+                android:layout_marginTop="16dp" />
         </LinearLayout>
 
-        <!-- 4. ОШИБКА ЗАГРУЗКИ -->
+        <!-- 4. Ошибка -->
         <LinearLayout
             android:id="@+id/layoutError"
             android:layout_width="match_parent"
@@ -127,9 +138,8 @@
             android:visibility="gone">
 
             <ImageView
-                android:layout_width="284dp"
-                android:layout_height="328dp"
-                android:contentDescription="Error"
+                android:layout_width="200dp"
+                android:layout_height="200dp"
                 android:src="@drawable/ic_oops" />
 
             <TextView
@@ -137,37 +147,33 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
-                android:gravity="center"
                 android:text="Ошибка загрузки"
-                android:textSize="20sp"
+                android:textSize="18sp"
                 android:textStyle="bold" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
-                android:text="Проверьте подключение к интернету и попробуйте снова"
-                android:textAlignment="center"
+                android:text="Проверьте интернет и попробуйте снова"
                 android:textColor="@android:color/darker_gray"
-                android:textSize="14sp" />
+                android:textSize="14sp"
+                android:textAlignment="center" />
 
             <Button
                 android:id="@+id/btnRetry"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Повторить"
-                android:layout_marginTop="24dp"
-                android:backgroundTint="@color/gray" />
-
+                android:layout_marginTop="16dp" />
         </LinearLayout>
 
-        <!-- 5. НОРМАЛЬНОЕ СОСТОЯНИЕ (RecyclerView с кнопкой и подборками) -->
+        <!-- 5. Список -->
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/rvCollections"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:padding="16dp"
-            android:paddingTop="0dp"
             android:clipToPadding="false"
             android:visibility="gone"
             app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />

@@ -5,65 +5,43 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.navigation.fragment.NavHostFragment
 import androidx.navigation.ui.setupWithNavController
+import com.example.togetherapp.data.local.SessionManager
 import com.example.togetherapp.databinding.ActivityMainBinding
-import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.yandex.mapkit.MapKitFactory
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
+    private lateinit var sessionManager: SessionManager
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        // Устанавливаем API-ключ (только один раз за жизнь процесса)
-        MapKitFactory.setApiKey("be661120-334b-444d-987e-c9571d4b1f53")
+
+        //  API ключ карты
 
 
         super.onCreate(savedInstanceState)
 
-        // Устанавливаем binding
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        // Проверяем авторизацию
-        val sharedPref = getSharedPreferences("app_prefs", MODE_PRIVATE)
-        val isLoggedIn = sharedPref.getBoolean("is_logged_in", false)
+        sessionManager = SessionManager.getInstance(applicationContext)
 
-        // Настройка навигации
         setupNavigation()
 
-        if (!isLoggedIn) {
-            Toast.makeText(this, "Вы вошли без авторизации", Toast.LENGTH_SHORT).show()
+        //  Проверка гостя
+        if (!sessionManager.isLoggedIn()) {
+            Toast.makeText(this, "Вы вошли как гость", Toast.LENGTH_SHORT).show()
         }
     }
 
     private fun setupNavigation() {
-        val navView: BottomNavigationView = binding.bottomNavigation
 
-        // Получаем NavController из NavHostFragment
         val navHostFragment =
             supportFragmentManager.findFragmentById(R.id.nav_host_fragment) as NavHostFragment
+
         val navController = navHostFragment.navController
 
-        // Связываем BottomNavigationView с NavController
-        navView.setupWithNavController(navController)
 
-        // Если нужно кастомное поведение при выборе
-        navView.setOnItemSelectedListener { menuItem ->
-            when (menuItem.itemId) {
-                R.id.navigation_home -> {
-                    navController.navigate(R.id.homeFragment)
-                    true
-                }
-                R.id.navigation_map -> {
-                    navController.navigate(R.id.mapFragment)
-                    true
-                }
-                R.id.navigation_collections -> {
-                    navController.navigate(R.id.collectionsFragment)
-                    true
-                }
-                else -> false
-            }
-        }
+        binding.bottomNavigation.setupWithNavController(navController)
     }
 }

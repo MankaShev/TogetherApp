@@ -28,11 +28,9 @@ class LoginActivity : ComponentActivity() {
         binding = ActivityLoginBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        // Используем singleton SessionManager
         sessionManager = SessionManager.getInstance(applicationContext)
-        Log.i(TAG, "SessionManager initialized (singleton)")
+        Log.i(TAG, "SessionManager initialized")
 
-        // Создаём репозиторий и ViewModel
         val repository = UserRepositoryImpl()
         val factory = LoginViewModelFactory(application, repository)
         viewModel = ViewModelProvider(this, factory)[LoginViewModel::class.java]
@@ -42,6 +40,8 @@ class LoginActivity : ComponentActivity() {
     }
 
     private fun setupClickListeners() {
+
+        //  Вход
         binding.loginButton.setOnClickListener {
             val username = binding.usernameInput.text.toString()
             val password = binding.passwordInput.text.toString()
@@ -54,16 +54,28 @@ class LoginActivity : ComponentActivity() {
             }
         }
 
+        //  ГОСТЕВОЙ ВХОД
         binding.continueWithoutLoginBtn.setOnClickListener {
+            Log.i(TAG, "Continue without login clicked")
+
+            // очищаем старую сессию
+            sessionManager.clearSession()
+
             Toast.makeText(this, "Продолжаем без входа", Toast.LENGTH_SHORT).show()
+
+            // Проверка
+            Log.i(TAG, "After clearSession userId = ${sessionManager.getUserId()}")
+
             navigateToMain()
         }
 
+        // 📝 Регистрация
         binding.logRegisterButton.setOnClickListener {
             navigateToRegister()
         }
 
         binding.btnRetryInput.setOnClickListener { hideAllStates() }
+
         binding.btnRetryNetwork.setOnClickListener {
             hideAllStates()
             Toast.makeText(this, "Повтор подключения", Toast.LENGTH_SHORT).show()
@@ -73,15 +85,16 @@ class LoginActivity : ComponentActivity() {
     private fun setupObservers() {
         viewModel.loginState.observe(this) { state ->
             when (state) {
+
                 is LoginViewModel.LoginState.Loading -> showLoading()
 
                 is LoginViewModel.LoginState.Success -> {
                     val user: User = state.user
-                    Log.i(TAG, "Login successful, user: $user")
 
-                    // Сохраняем пользователя через singleton SessionManager
+                    Log.i(TAG, "Login successful: $user")
+
+                    // Сохраняем пользователя
                     sessionManager.saveUser(user)
-                    Log.i(TAG, "User saved in SessionManager: id=${user.id}")
 
                     Toast.makeText(this, "Вход выполнен", Toast.LENGTH_SHORT).show()
                     navigateToMain()
@@ -89,12 +102,12 @@ class LoginActivity : ComponentActivity() {
 
                 is LoginViewModel.LoginState.Error -> {
                     when (state.errorType) {
+
                         LoginViewModel.LoginState.ErrorType.INPUT_ERROR -> {
-                            Log.w(TAG, "Input error: ${state.message}")
                             showInputError(state.message)
                         }
+
                         LoginViewModel.LoginState.ErrorType.NETWORK_ERROR -> {
-                            Log.w(TAG, "Network error: ${state.message}")
                             showNetworkError()
                         }
                     }
@@ -105,18 +118,17 @@ class LoginActivity : ComponentActivity() {
 
     private fun navigateToMain() {
         Log.i(TAG, "Navigating to MainActivity")
-        val intent = Intent(this, MainActivity::class.java)
-        startActivity(intent)
+        startActivity(Intent(this, MainActivity::class.java))
         finish()
     }
 
     private fun navigateToRegister() {
         Log.i(TAG, "Navigating to RegisterActivity")
-        val intent = Intent(this, RegisterActivity::class.java)
-        startActivity(intent)
+        startActivity(Intent(this, RegisterActivity::class.java))
     }
 
     // UI состояния
+
     private fun showLoading() {
         hideAllStates()
         binding.layoutLoading.visibility = android.view.View.VISIBLE
