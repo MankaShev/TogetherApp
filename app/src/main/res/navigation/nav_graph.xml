@@ -3,7 +3,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/nav_graph"
-    app:startDestination="@id/homeFragment">
+    app:startDestination="@id/onboardingFragment1">
 
     <!-- Главный экран -->
     <fragment
@@ -20,7 +20,6 @@
         tools:layout="@layout/fragment_map" />
 
     <!-- Личные подборки -->
-    <!-- Личные подборки -->
     <fragment
         android:id="@+id/collectionsFragment"
         android:name="com.example.togetherapp.presentation.screens.personalcollection.PersonalCollectionsFragment"
@@ -31,11 +30,6 @@
         <action
             android:id="@+id/action_collectionsFragment_to_createCollectionFragment"
             app:destination="@id/createCollectionFragment" />
-
-        <!-- Переход на детальный просмотр подборки -->
-        <action
-            android:id="@+id/action_collectionsFragment_to_collectionDetailFragment"
-            app:destination="@id/collectionDetailFragment" />
     </fragment>
 
     <!-- Экран создания подборки -->
@@ -45,6 +39,35 @@
         android:label="Создать подборку"
         tools:layout="@layout/create_collection_screen" />
 
+    <!-- Онбординг экраны -->
+    <fragment
+        android:id="@+id/onboardingFragment1"
+        android:name="com.example.togetherapp.presentation.screens.onboarding.OnboardingFragment1"
+        android:label="Onboarding 1"
+        tools:layout="@layout/fragment_onboarding1">
+
+        <action
+            android:id="@+id/action_onboarding1_to_onboarding2"
+            app:destination="@id/onboardingFragment2" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/onboardingFragment2"
+        android:name="com.example.togetherapp.presentation.screens.onboarding.OnboardingFragment2"
+        android:label="Onboarding 2"
+        tools:layout="@layout/fragment_onboarding2">
+
+        <action
+            android:id="@+id/action_onboarding2_to_onboarding3"
+            app:destination="@id/onboardingFragment3" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/onboardingFragment3"
+        android:name="com.example.togetherapp.presentation.screens.onboarding.OnboardingFragment3"
+        android:label="Onboarding 3"
+        tools:layout="@layout/fragment_onboarding3" />
+
     <!-- Профиль (ВРЕМЕННО ОТКЛЮЧЕН, пока нет ViewModel и State) -->
     <!--
     <fragment
@@ -53,11 +76,28 @@
         android:label="Профиль"
         tools:layout="@layout/fragment_profile" />
     -->
-    <!-- Экран детального просмотра подборки -->
     <fragment
-        android:id="@+id/collectionDetailFragment"
-        android:name="com.example.togetherapp.presentation.screens.personalcollection.CollectionDetailFragment"
-        android:label="Подборка"
-        tools:layout="@layout/fragment_collection_detail" />
+        android:id="@+id/friendsFragment"
+        android:name="com.example.togetherapp.presentation.screens.friends.FriendsFragment"
+        android:label="Друзья"
+        tools:layout="@layout/fragment_friends" />
+
+    <fragment
+        android:id="@+id/profileFragment"
+        android:name="com.example.togetherapp.presentation.screens.profile.ProfileFragment"
+        android:label="Профиль"
+        tools:layout="@layout/fragment_profile">
+
+        <!-- Переход на экран друзей -->
+        <action
+            android:id="@+id/action_profileFragment_to_friendsFragment"
+            app:destination="@id/friendsFragment" />
+
+        <!-- Переход на экран коллекций -->
+        <action
+            android:id="@+id/action_profileFragment_to_collectionsFragment"
+            app:destination="@id/collectionsFragment" />
+
+    </fragment>
 
 </navigation>

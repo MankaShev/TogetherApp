@@ -11,6 +11,8 @@ import androidx.fragment.app.viewModels
 import androidx.lifecycle.Observer
 import com.example.togetherapp.presentation.screens.login.LoginActivity
 import com.example.togetherapp.databinding.FragmentProfileBinding
+import com.example.togetherapp.R
+import androidx.navigation.fragment.findNavController
 //import com.example.togetherapp.presentation.state.ProfileUiState
 
 class ProfileFragment : Fragment() {
@@ -54,6 +56,15 @@ class ProfileFragment : Fragment() {
             val intent = Intent(requireContext(), LoginActivity::class.java)
             startActivity(intent)
             requireActivity().finish()
+        }
+
+        binding.btnMyCollections.setOnClickListener {
+            // Переход на экран коллекций
+            findNavController().navigate(R.id.action_profileFragment_to_collectionsFragment)
+        }
+
+        binding.btnFriends.setOnClickListener {
+            findNavController().navigate(R.id.action_profileFragment_to_friendsFragment)
         }
 
         // Остальные слушатели...

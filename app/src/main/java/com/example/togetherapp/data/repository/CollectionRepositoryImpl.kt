@@ -46,26 +46,21 @@ class CollectionRepositoryImpl(
             )
     }
 
-    override suspend fun addPlace(collectionId: Int, place: Place) {
-        try {
-            // Вместо вставки всего объекта Place, вставляем только нужные поля
-            SupabaseClient.supabase
-                .from("collection_places")
-                .insert(
-                    mapOf(
-                        "collection_id" to collectionId,
-                        "place_id" to place.id,  // Сохраняем только ID места
-                        "place_name" to place.name,  // Может быть, если нужно хранить имя
-                        "latitude" to place.latitude,
-                        "longitude" to place.longitude,
-                        "is_visited" to false,
-                        "note" to "",
-                        "order_index" to 0
-                    )
+    override suspend fun addPlace(
+        collectionId: Int,
+        place: Place
+    ) {
+
+        SupabaseClient.supabase
+            .from("collection_places")
+            .insert(
+                mapOf(
+                    "collection_id" to collectionId,
+                    "place_id" to place.id,
+                    "is_visited" to false,
+                    "note" to "",
+                    "order_index" to 0
                 )
-        } catch (e: Exception) {
-            println("Ошибка при добавлении места: ${e.message}")
-            throw e
-        }
+            )
     }
 }
