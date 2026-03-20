@@ -64,6 +64,9 @@ class MapFragment : Fragment() {
     // Лаунчер: "слушает" ответ пользователя из системного окна (для местоположения)
     private lateinit var locationPermissionLauncher: androidx.activity.result.ActivityResultLauncher<String>
 
+    // Отметка для выделенного места (с открытой карточкой)
+    private var selectedPlacePlacemark: com.yandex.mapkit.map.PlacemarkMapObject? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         // Инициализируем библиотеку. Ключ уже стоит (пока что) в MainActivity, тут просто "подключаемся".
@@ -111,8 +114,7 @@ class MapFragment : Fragment() {
         // Создаем SearchManager (для того, чтобы искать данные по нажатию на карту)
         searchManager = SearchFactory.getInstance().createSearchManager(SearchManagerType.COMBINED)
 
-        // Инициализируем RecyclerView и Адаптер (чтобы можно было листать список ответов на запрос)
-        // В лямбде описываем, что делать при клике на элемент списка
+        // Инициализируем Адаптер (чтобы можно было использовать список ответов на запрос)
         searchAdapter = SearchAdapter { item ->
             val point = item.obj?.geometry?.firstOrNull()?.point
             if (point != null) {
@@ -126,9 +128,8 @@ class MapFragment : Fragment() {
                 binding.cvSearchResults.visibility = View.GONE
                 binding.etSearch.clearFocus()
 
-                // Пока что вызываем рабочий поиск startSearch, чтобы открылась шторка
-                // TODO Сделать так, чтобы передавалась уже сама информация о месте в шторку
-                startSearch(point)
+                // ВМЕСТО startSearch(point) — сразу показываем данные в шторку!
+                showPlaceData(item.obj, point)
             }
         }
 
@@ -225,6 +226,9 @@ class MapFragment : Fragment() {
         // Ставим Томск по дефолту
         map.move(com.yandex.mapkit.map.CameraPosition(Point(56.471116, 84.946636), 16.5f, 0.0f, 0.0f))
 
+        // По умолчанию прячем шторку
+        bottomSheetBehavior?.state = BottomSheetBehavior.STATE_HIDDEN
+
         // Инициализируем слой
         userLocationLayer = mapKit.createUserLocationLayer(mapView.mapWindow)
         userLocationLayer.isVisible = true
@@ -235,6 +239,8 @@ class MapFragment : Fragment() {
         // Создаем объект слушателя
         mapInputListener = object : com.yandex.mapkit.map.InputListener {
             override fun onMapTap(map: com.yandex.mapkit.map.Map, point: Point) {
+                // При нажатии на карту все списки мест закрываются
+                binding.cvSearchResults.visibility = View.GONE
                 // Очищаем шторку
                 binding.mapContainer.placeNameText.text = ""
                 binding.mapContainer.placeAddressText.text = ""
@@ -244,13 +250,11 @@ class MapFragment : Fragment() {
                 binding.mapContainer.addToCollectionButton.text = "Добавить в коллекцию"
                 binding.mapContainer.addToCollectionButton.isEnabled = true
 
-                // Сбрасываем текущее место перед новым поиском
-                currentPlace = null
-
                 // Скрываем шторку перед новым поиском
                 bottomSheetBehavior?.state = BottomSheetBehavior.STATE_HIDDEN
 
-                android.util.Log.d("MapStep", "ЭТАП 2: Запускаю поиск для ${point.latitude}")
+                // Безопасное удаление старого маркера
+                removeSelectedMark()
 
                 // Передаем координаты в поиск
                 startSearch(point)
@@ -272,8 +276,8 @@ class MapFragment : Fragment() {
             // Разрешение уже есть - показываем устрашающее уведомление
             Toast.makeText(
                 requireContext(),
-                "Подождите пару секунд, сейчас мы вас найдем:)",
-                android.widget.Toast.LENGTH_LONG
+                "Определяем местоположение...",
+                Toast.LENGTH_LONG
             ).show()
             // и летим картой к пользователю
             moveToUserWithZoom()
@@ -298,73 +302,122 @@ class MapFragment : Fragment() {
         }, 2000)
     }
 
+    private fun showPlaceInBottomSheet(name: String, address: String, category: String, point: Point) {
+        // Сохраняем данные в currentPlace для дальнейшего добавления в коллекцию
+        currentPlace = SelectedPlace(
+            external_id = (point.latitude * point.longitude).toInt(),
+            title = name,
+            latitude = point.latitude,
+            longitude = point.longitude,
+            description = null,
+            address = address
+        )
+
+        // Удаляем старый маркер, если он был
+        removeSelectedMark()
+
+        // Создаем новый маркер
+        selectedPlacePlacemark = mapView.mapWindow.map.mapObjects.addPlacemark().apply {
+            geometry = point
+
+                // Устанавливаем иконку с настройками стиля
+                setIcon(
+                    com.yandex.runtime.image.ImageProvider.fromResource(
+                        requireContext(),
+                        R.drawable.ic_selected_pin
+                    ),
+                    com.yandex.mapkit.map.IconStyle().apply {
+                        // ставим картинку не центром, а серединой нижнего края
+                        anchor = android.graphics.PointF(0.5f, 1.0f)
+
+                        // Уменьшаем для аккуратности
+                        scale = 0.75f
+                    }
+                )
+        }
+
+        // Двигаем карту к выбранной организации
+        mapView.mapWindow.map.move(
+            com.yandex.mapkit.map.CameraPosition(point, 17.0f, 0.0f, 0.0f),
+            com.yandex.mapkit.Animation(com.yandex.mapkit.Animation.Type.SMOOTH, 0.8f),
+            null
+        )
+
+        // Обновляем UI элементы в шторке
+        binding.mapContainer.placeNameText.text = name
+        binding.mapContainer.placeAddressText.text = address
+        binding.mapContainer.categoryText.text = category
+
+        // Сбрасываем состояние кнопки
+        binding.mapContainer.addToCollectionButton.text = "Добавить в коллекцию"
+        binding.mapContainer.addToCollectionButton.isEnabled = true
+
+        // Показываем шторку
+        bottomSheetBehavior?.state = BottomSheetBehavior.STATE_EXPANDED
+    }
+
     private fun startSearch(point: Point) {
         // Настройки поиска: ищем все организации в одной точке
         val searchOptions = com.yandex.mapkit.search.SearchOptions().apply {
-            // Ищем только бизнесы, а не адреса (пока что) TODO Поиграться с поиском у Яндекс карт и настроить список организаций, при выборе дома
+            // Ищем только бизнесы, а не адреса
             searchTypes = SearchType.BIZ.value
-            resultPageSize = 1
+            resultPageSize = 20 // Просим 20 или меньше результатов
         }
 
-        // Сохраняем в поле класса searchSession (чтобы не было finalized!)
         searchSession = searchManager.submit(
             point,
             16,
             searchOptions,
             object : Session.SearchListener {
                 override fun onSearchResponse(response: com.yandex.mapkit.search.Response) {
-                    // Достаем метаданные бизнеса из первого результата
-                    val bizMetadata = response.collection.children.firstOrNull()?.obj
-                        ?.metadataContainer
-                        ?.getItem(com.yandex.mapkit.search.BusinessObjectMetadata::class.java)
+                    val results = response.collection.children
 
-                    if (bizMetadata != null) {
-                        val name = bizMetadata.name
-                        val address = bizMetadata.address.formattedAddress
-                        val category = bizMetadata.categories.firstOrNull()?.name ?: ""
+                    when {
+                        results.isEmpty() -> {
+                            // Ничего не нашли
+                            bottomSheetBehavior?.state = BottomSheetBehavior.STATE_HIDDEN
+                            binding.cvSearchResults.visibility = View.GONE
+                        }
 
-                        android.util.Log.d("MapStep", "ЭТАП 2 ПРОЙДЕН: Найдена организация: $name")
+                        results.size == 1 -> {
+                            // Один результат: используем функцию показа шторки сразу
+                            binding.cvSearchResults.visibility = View.GONE
 
-                        // Создаем объект Place и сохраняем
-                        currentPlace = SelectedPlace(
-                            external_id = (point.latitude * point.longitude).toInt(),
-                            title = name,
-                            latitude = point.latitude,
-                            longitude = point.longitude,
-                            description = null,
-                            address = address
-                        )
+                            // results.first().obj — это и есть нужный нам GeoObject
+                            showPlaceData(results.first().obj, point)
+                        }
 
-                        // Сбрасываем текст кнопки
-                        binding.mapContainer.addToCollectionButton.text = "Добавить в коллекцию"
-                        binding.mapContainer.addToCollectionButton.isEnabled = true
+                        else -> {
+                            // Много результатов: показываем список
+                            bottomSheetBehavior?.state = BottomSheetBehavior.STATE_HIDDEN
+                            searchAdapter.submitList(results)
+                            binding.cvSearchResults.visibility = View.VISIBLE
 
-                        // Обновляем текст в шторке
-                        binding.mapContainer.placeNameText.text = name
-                        binding.mapContainer.placeAddressText.text = address
-                        binding.mapContainer.categoryText.text = category
+                            // Если было выделено какое-то место, то снимаем выделение
+                            removeSelectedMark()
 
-                        // Выезжаем!
-                        bottomSheetBehavior?.state = BottomSheetBehavior.STATE_EXPANDED
-                    } else {
-                        // Если в этой точке вообще нет бизнеса (например, газон или пустая дорога)
-                        android.util.Log.d("MapStep", "В этой точке нет организаций")
-
-                        // Сбрасываем текущее место
-                        currentPlace = null
-
-                        // Скрываем шторку
-                        bottomSheetBehavior?.state = BottomSheetBehavior.STATE_HIDDEN
+                            currentPlace = null
+                        }
                     }
                 }
 
                 override fun onSearchError(error: com.yandex.runtime.Error) {
-                    android.util.Log.e("MapStep", "Ошибка поиска: $error")
-                    // Сбрасываем текущее место при ошибке
-                    currentPlace = null
+                    android.util.Log.e("MapStep", "Ошибка: $error")
                 }
             }
         )
+    }
+
+    private fun showPlaceData(obj: com.yandex.mapkit.GeoObject?, point: Point) {
+        val metadata = obj?.metadataContainer?.getItem(com.yandex.mapkit.search.BusinessObjectMetadata::class.java)
+        if (metadata != null) {
+            val name = metadata.name
+            val address = metadata.address.formattedAddress
+            val category = metadata.categories.firstOrNull()?.name ?: ""
+
+            // Вызываем функцию показа шторки
+            showPlaceInBottomSheet(name, address, category, point)
+        }
     }
 
     private fun startTextSearch(query: String) {
@@ -384,30 +437,12 @@ class MapFragment : Fragment() {
             object : Session.SearchListener {
                 override fun onSearchResponse(response: com.yandex.mapkit.search.Response) {
                     val results = response.collection.children
-                    android.util.Log.d("MapSearch", "Найдено объектов: ${results.size}")
 
                     if (results.isNotEmpty()) {
                         searchAdapter.submitList(results)
                         binding.cvSearchResults.visibility = View.VISIBLE
                     } else {
                         binding.cvSearchResults.visibility = View.GONE
-                    }
-
-                    // Выводим результаты в логи для проверки
-                    results.forEachIndexed { index, searchResult ->
-                        val obj = searchResult.obj
-                        val metadata = obj?.metadataContainer?.getItem(com.yandex.mapkit.search.BusinessObjectMetadata::class.java)
-
-                        if (metadata != null) {
-                            val name = metadata.name
-                            val address = metadata.address.formattedAddress
-                            val point = obj.geometry.firstOrNull()?.point
-
-                            android.util.Log.d(
-                                "MapSearch",
-                                "#$index: $name | Адрес: $address | Координаты: ${point?.latitude}, ${point?.longitude}"
-                            )
-                        }
                     }
 
                     if (results.isEmpty()) {
@@ -420,6 +455,15 @@ class MapFragment : Fragment() {
                 }
             }
         )
+    }
+
+    private fun removeSelectedMark() {
+        selectedPlacePlacemark?.let {
+            if (it.isValid) {
+                mapView.mapWindow.map.mapObjects.remove(it)
+            }
+        }
+        selectedPlacePlacemark = null
     }
 
     // ЭТО КРИТИЧЕСКИ ВАЖНО ДЛЯ ЯНДЕКСА:
