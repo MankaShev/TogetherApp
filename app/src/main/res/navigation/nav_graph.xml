@@ -3,54 +3,20 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/nav_graph"
-    app:startDestination="@id/onboardingFragment1">
+    app:startDestination="@id/homeFragment">
 
-    <!-- Онбординг 1 -->
-    <fragment
-        android:id="@+id/onboardingFragment1"
-        android:name="com.example.togetherapp.presentation.screens.onboarding.OnboardingFragment1"
-        android:label="Onboarding 1"
-        tools:layout="@layout/fragment_onboarding1">
-
-        <action
-            android:id="@+id/action_onboarding1_to_onboarding2"
-            app:destination="@id/onboardingFragment2" />
-    </fragment>
-
-    <!-- Онбординг 2 -->
-    <fragment
-        android:id="@+id/onboardingFragment2"
-        android:name="com.example.togetherapp.presentation.screens.onboarding.OnboardingFragment2"
-        android:label="Onboarding 2"
-        tools:layout="@layout/fragment_onboarding2">
-
-        <action
-            android:id="@+id/action_onboarding2_to_onboarding3"
-            app:destination="@id/onboardingFragment3" />
-    </fragment>
-
-    <!-- Онбординг 3 -->
-    <fragment
-        android:id="@+id/onboardingFragment3"
-        android:name="com.example.togetherapp.presentation.screens.onboarding.OnboardingFragment3"
-        android:label="Onboarding 3"
-        tools:layout="@layout/fragment_onboarding3" />
-
-    <!-- Главная -->
     <fragment
         android:id="@+id/homeFragment"
         android:name="com.example.togetherapp.presentation.screens.home.HomeFragment"
         android:label="Главная"
         tools:layout="@layout/fragment_home" />
 
-    <!-- Карта -->
     <fragment
         android:id="@+id/mapFragment"
         android:name="com.example.togetherapp.presentation.screens.map.MapFragment"
         android:label="Карта"
         tools:layout="@layout/fragment_map" />
 
-    <!-- Личные подборки -->
     <fragment
         android:id="@+id/collectionsFragment"
         android:name="com.example.togetherapp.presentation.screens.personalcollection.PersonalCollectionsFragment"
@@ -59,8 +25,8 @@
 
         <argument
             android:name="isAddingMode"
-            app:argType="boolean"
-            android:defaultValue="false" />
+            android:defaultValue="false"
+            app:argType="boolean" />
 
         <action
             android:id="@+id/action_collectionsFragment_to_createCollectionFragment"
@@ -71,28 +37,24 @@
             app:destination="@id/collectionDetailFragment" />
     </fragment>
 
-    <!-- Создание подборки -->
     <fragment
         android:id="@+id/createCollectionFragment"
         android:name="com.example.togetherapp.presentation.screens.personalcollection.CreateCollectionFragment"
         android:label="Создать подборку"
         tools:layout="@layout/create_collection_screen" />
 
-    <!-- Детали подборки -->
     <fragment
         android:id="@+id/collectionDetailFragment"
         android:name="com.example.togetherapp.presentation.screens.personalcollection.CollectionDetailFragment"
         android:label="Подборка"
         tools:layout="@layout/fragment_collection_detail" />
 
-    <!-- Друзья -->
     <fragment
         android:id="@+id/friendsFragment"
         android:name="com.example.togetherapp.presentation.screens.friends.FriendsFragment"
         android:label="Друзья"
         tools:layout="@layout/fragment_friends" />
 
-    <!-- Профиль -->
     <fragment
         android:id="@+id/profileFragment"
         android:name="com.example.togetherapp.presentation.screens.profile.ProfileFragment"

@@ -12,7 +12,23 @@
         android:layout_height="wrap_content"
         android:paddingBottom="24dp">
 
+        <!-- КНОПКА ЗАКРЫТИЯ (в левом верхнем углу) -->
+
         <!-- Заголовок: Название подборки -->
+
+        <ImageButton
+            android:id="@+id/btnClose"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:layout_marginStart="368dp"
+            android:layout_marginTop="28dp"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Закрыть"
+            android:scaleType="centerInside"
+            android:src="@drawable/ic_exit"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
         <TextView
             android:id="@+id/tvCollectionTitle"
             android:layout_width="wrap_content"
@@ -26,7 +42,7 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
 
-        <!-- КАРТОЧКА С ИНФОРМАЦИЕЙ (вместо картинки) -->
+        <!-- КАРТОЧКА С ИНФОРМАЦИЕЙ -->
         <androidx.cardview.widget.CardView
             android:id="@+id/infoCard"
             android:layout_width="0dp"
@@ -72,7 +88,6 @@
                         android:textSize="16sp"
                         android:textColor="@android:color/darker_gray" />
                 </LinearLayout>
-
                 <!-- Разделитель -->
                 <View
                     android:layout_width="match_parent"
@@ -105,7 +120,6 @@
                         android:textSize="16sp"
                         android:textColor="@android:color/darker_gray" />
 
-                    <!-- Иконка замка для приватности (опционально) -->
                 </LinearLayout>
             </LinearLayout>
         </androidx.cardview.widget.CardView>
@@ -119,7 +133,7 @@
             android:layout_marginTop="16dp"
             android:layout_marginEnd="16dp"
             android:lineSpacingExtra="4dp"
-            android:text="Описание подборки. Здесь может быть текст с описанием того, какие места собраны в этой подборке."
+            android:text="Описание подборки"
             android:textColor="@android:color/darker_gray"
             android:textSize="16sp"
             app:layout_constraintEnd_toEndOf="parent"
@@ -167,7 +181,6 @@
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
-
         <!-- Ошибка загрузки -->
         <LinearLayout
             android:id="@+id/layoutError"

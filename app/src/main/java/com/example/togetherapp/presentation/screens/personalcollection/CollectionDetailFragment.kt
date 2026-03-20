@@ -7,6 +7,7 @@ import android.view.ViewGroup
 import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
+import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.togetherapp.data.local.SessionManager
 import com.example.togetherapp.data.repository.CollectionRepositoryImpl
@@ -50,6 +51,7 @@ class CollectionDetailFragment : Fragment() {
         initViewModel()
         setupRecyclerView()
         setupObservers()
+        setupCloseButton()
 
         if (collectionId != -1) {
             binding.progressLoading.visibility = View.VISIBLE
@@ -99,8 +101,19 @@ class CollectionDetailFragment : Fragment() {
         }
     }
 
+    private fun setupCloseButton() {
+        binding.btnClose.setOnClickListener {
+            val navController = findNavController()
+            val wasPopped = navController.popBackStack()
+
+            if (!wasPopped) {
+                requireActivity().onBackPressedDispatcher.onBackPressed()
+            }
+        }
+    }
+
     private fun mapAccessType(accessType: String): String {
-        return when (accessType) {
+        return when (accessType.lowercase()) {
             "private" -> "Приватная"
             "public" -> "Публичная"
             "friends" -> "Для друзей"
