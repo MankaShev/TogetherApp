@@ -36,85 +36,15 @@ class CollectionsViewModel(
                 if (collectionsFromDb.isNotEmpty()) {
                     _state.value = CollectionsUiState.Success(collectionsFromDb)
                 } else {
-
-                    // ТЕСТОВЫЕ ДАННЫЕ (если БД пустая)
-                    val collections = listOf(
-                        CollectionModel(
-                            id = 1,
-                            user_id = 101,
-                            title = "Томск",
-                            description = "Интересные места Томска",
-                            access_type = "public",
-                            created_at = "2026-03-15"
-                        ),
-                        CollectionModel(
-                            id = 2,
-                            user_id = 102,
-                            title = "Завтраки",
-                            description = "Лучшие места для завтрака",
-                            access_type = "public",
-                            created_at = "2026-03-15"
-                        ),
-                        CollectionModel(
-                            id = 3,
-                            user_id = 103,
-                            title = "Тюмень",
-                            description = "Достопримечательности Тюмени",
-                            access_type = "public",
-                            created_at = "2026-03-15"
-                        ),
-                        CollectionModel(
-                            id = 4,
-                            user_id = 104,
-                            title = "Музеи",
-                            description = "Интересные музеи",
-                            access_type = "public",
-                            created_at = "2026-03-15"
-                        )
-                    )
-
-                    _state.value = CollectionsUiState.Success(collections)
+                    // ✅ НЕТ КОЛЛЕКЦИЙ
+                    _state.value = CollectionsUiState.Empty
                 }
 
             } catch (e: Exception) {
-
-                // Если ошибка сети — тоже показываем тестовые данные
-                val collections = listOf(
-                    CollectionModel(
-                        id = 1,
-                        user_id = 101,
-                        title = "Томск",
-                        description = "Интересные места Томска",
-                        access_type = "public",
-                        created_at = "2026-03-15"
-                    ),
-                    CollectionModel(
-                        id = 2,
-                        user_id = 102,
-                        title = "Завтраки",
-                        description = "Лучшие места для завтрака",
-                        access_type = "public",
-                        created_at = "2026-03-15"
-                    ),
-                    CollectionModel(
-                        id = 3,
-                        user_id = 103,
-                        title = "Тюмень",
-                        description = "Достопримечательности Тюмени",
-                        access_type = "public",
-                        created_at = "2026-03-15"
-                    ),
-                    CollectionModel(
-                        id = 4,
-                        user_id = 104,
-                        title = "Музеи",
-                        description = "Интересные музеи",
-                        access_type = "public",
-                        created_at = "2026-03-15"
-                    )
+                // ✅ ОШИБКА
+                _state.value = CollectionsUiState.Error(
+                    e.message ?: "Ошибка загрузки коллекций"
                 )
-
-                _state.value = CollectionsUiState.Success(collections)
             }
         }
     }
