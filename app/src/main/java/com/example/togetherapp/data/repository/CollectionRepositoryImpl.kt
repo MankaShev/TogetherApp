@@ -87,16 +87,22 @@ class CollectionRepositoryImpl(
 
     override suspend fun addPlace(collectionId: Int, place: SelectedPlace) {
         try {
+            // 1. Получаем или создаем место в таблице places
             val savedPlace = placeRepository.getOrCreatePlace(place)
 
+            // 2. Проверяем, есть ли уже связь
             val existingLinks = SupabaseClient.supabase
                 .from("collection_places")
                 .select()
                 .decodeList<CollectionPlaceDbDto>()
-                .filter { it.collection_id == collectionId && it.place_id == savedPlace.id }
+                .filter {
+                    it.collection_id == collectionId &&
+                            it.place_id == savedPlace.id
+                }
 
             if (existingLinks.isNotEmpty()) return
 
+            // 3. Создаем связь
             val dto = CollectionPlaceInsertDto(
                 collection_id = collectionId,
                 place_id = savedPlace.id,
