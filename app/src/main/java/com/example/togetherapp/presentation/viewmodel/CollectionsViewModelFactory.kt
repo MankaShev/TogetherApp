@@ -10,11 +10,12 @@ class CollectionsViewModelFactory(
 ) : ViewModelProvider.Factory {
 
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
-
         if (modelClass.isAssignableFrom(CollectionsViewModel::class.java)) {
-
             val addPlaceToCollectionUseCase = AddPlaceToCollectionUseCase(repository)
-            return CollectionsViewModel(repository, addPlaceToCollectionUseCase) as T
+            return CollectionsViewModel(
+                collectionRepository = repository,
+                addPlaceToCollectionUseCase = addPlaceToCollectionUseCase
+            ) as T
         }
 
         throw IllegalArgumentException("Unknown ViewModel class")

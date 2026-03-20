@@ -10,13 +10,13 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
-import com.example.togetherapp.presentation.screens.login.LoginActivity
-import com.example.togetherapp.presentation.screens.register.RegisterActivity
 import com.example.togetherapp.data.local.SessionManager
 import com.example.togetherapp.data.repository.CollectionRepositoryImpl
 import com.example.togetherapp.data.repository.PlaceRepositoryImpl
 import com.example.togetherapp.databinding.FragmentCollectionsBinding
 import com.example.togetherapp.domain.models.CollectionModel
+import com.example.togetherapp.presentation.screens.login.LoginActivity
+import com.example.togetherapp.presentation.screens.register.RegisterActivity
 import com.example.togetherapp.presentation.state.CollectionsUiState
 import com.example.togetherapp.presentation.viewmodel.CollectionsViewModel
 import com.example.togetherapp.presentation.viewmodel.CollectionsViewModelFactory
@@ -89,6 +89,11 @@ class PersonalCollectionsFragment : Fragment() {
             putInt("collectionId", collection.id)
             putString("collectionTitle", collection.title)
             putString("collectionDescription", collection.description ?: "")
+            putString("collectionAccessType", collection.access_type)
+            putString(
+                "collectionAuthor",
+                sessionManager.getUserLogin() ?: "Неизвестный автор"
+            )
         }
 
         findNavController().navigate(
@@ -100,7 +105,11 @@ class PersonalCollectionsFragment : Fragment() {
     private fun addPlaceToCollection(collection: CollectionModel) {
         val place = sharedViewModel.selectedPlace.value
         if (place == null) {
-            Toast.makeText(requireContext(), "Сначала выберите место на карте", Toast.LENGTH_SHORT).show()
+            Toast.makeText(
+                requireContext(),
+                "Сначала выберите место на карте",
+                Toast.LENGTH_SHORT
+            ).show()
             return
         }
 
@@ -109,8 +118,6 @@ class PersonalCollectionsFragment : Fragment() {
     }
 
     private fun setupListeners() {
-
-        // КНОПКИ ГОСТЯ
         binding.btnLoginGuest.setOnClickListener {
             val intent = Intent(requireContext(), LoginActivity::class.java)
             startActivity(intent)
@@ -159,8 +166,6 @@ class PersonalCollectionsFragment : Fragment() {
     }
 
     private fun renderState(state: CollectionsUiState) {
-
-        //  guest режим
         if (sessionManager.getUserId() == -1) {
             showGuestState()
             return
@@ -191,7 +196,6 @@ class PersonalCollectionsFragment : Fragment() {
         }
     }
 
-    // НОВЫЙ МЕТОД
     private fun showGuestState() {
         hideAllStates()
         binding.layoutGuest.visibility = View.VISIBLE

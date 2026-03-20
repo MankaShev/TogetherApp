@@ -8,6 +8,8 @@ import android.view.ViewGroup
 import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
+import androidx.navigation.fragment.findNavController
+import com.example.togetherapp.R
 import com.example.togetherapp.databinding.FragmentProfileBinding
 import com.example.togetherapp.presentation.screens.login.LoginActivity
 
@@ -35,6 +37,7 @@ class ProfileFragment : Fragment() {
     }
 
     private fun setupListeners() {
+
         binding.btnLogin.setOnClickListener {
             val intent = Intent(requireContext(), LoginActivity::class.java)
             startActivity(intent)
@@ -50,11 +53,11 @@ class ProfileFragment : Fragment() {
         }
 
         binding.btnMyCollections.setOnClickListener {
-            Toast.makeText(requireContext(), "Переход в подборки", Toast.LENGTH_SHORT).show()
+            findNavController().navigate(R.id.collectionsFragment)
         }
 
         binding.btnFriends.setOnClickListener {
-            Toast.makeText(requireContext(), "Раздел друзей пока в разработке", Toast.LENGTH_SHORT).show()
+            findNavController().navigate(R.id.friendsFragment)
         }
     }
 
@@ -69,8 +72,7 @@ class ProfileFragment : Fragment() {
 
         when (state) {
             is ProfileViewModel.ProfileState.Loading -> {
-                // Можно оставить пусто или показать минимальную загрузку
-                // Пока просто ничего не показываем отдельно
+                // сюда потом можно добавить progress bar
             }
 
             is ProfileViewModel.ProfileState.Guest -> {
@@ -83,23 +85,17 @@ class ProfileFragment : Fragment() {
                 binding.layoutMenu.visibility = View.VISIBLE
 
                 val user = state.user
-
                 binding.tvUserName.text = user.login
                 binding.tvProfileName.text = user.login
                 binding.tvProfileLogin.text = "@${user.login}"
 
-                // Если потом появится настоящее описание — подставишь его сюда
                 binding.tvCollectionsCount.text = "0"
                 binding.tvFriendsCount.text = "0"
             }
 
             is ProfileViewModel.ProfileState.Error -> {
                 binding.layoutUnauthorized.visibility = View.VISIBLE
-                Toast.makeText(
-                    requireContext(),
-                    state.message,
-                    Toast.LENGTH_LONG
-                ).show()
+                Toast.makeText(requireContext(), state.message, Toast.LENGTH_LONG).show()
             }
         }
     }
