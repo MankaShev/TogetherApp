@@ -1,14 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_marginBottom="12dp"
-    app:cardCornerRadius="12dp"
+    app:cardCornerRadius="16dp"
     app:cardElevation="2dp"
-    app:cardBackgroundColor="#E4E4E4"
-    android:foreground="?android:attr/selectableItemBackground">
+    app:cardBackgroundColor="@android:color/white">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -16,37 +14,33 @@
         android:orientation="vertical"
         android:padding="16dp">
 
-        <!-- Название места -->
         <TextView
-            android:id="@+id/tvPlaceName"
+            android:id="@+id/tvPlaceTitle"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Название места"
             android:textSize="18sp"
             android:textStyle="bold"
-            android:textColor="@android:color/black"
-            android:maxLines="2"
-            android:ellipsize="end" />
+            android:textColor="@android:color/black" />
 
-        <!-- Адрес места -->
         <TextView
             android:id="@+id/tvPlaceAddress"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:text="Адрес места, улица, дом"
+            android:layout_marginTop="6dp"
+            android:text="Адрес"
             android:textSize="14sp"
-            android:textColor="@android:color/darker_gray"
-            android:maxLines="2"
-            android:ellipsize="end" />
+            android:textColor="@android:color/darker_gray" />
 
-        <!-- Разделительная линия (опционально) -->
-        <View
+        <TextView
+            android:id="@+id/tvPlaceDescription"
             android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:layout_marginTop="12dp"
-            android:background="#F0F0F0"
-            android:visibility="gone" />
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="Описание"
+            android:textSize="14sp"
+            android:textColor="@android:color/darker_gray" />
 
     </LinearLayout>
+
 </androidx.cardview.widget.CardView>

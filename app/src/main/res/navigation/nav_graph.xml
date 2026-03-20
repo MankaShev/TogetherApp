@@ -5,63 +5,69 @@
     android:id="@+id/nav_graph"
     app:startDestination="@id/homeFragment">
 
-    <!--  Главная -->
     <fragment
         android:id="@+id/homeFragment"
         android:name="com.example.togetherapp.presentation.screens.home.HomeFragment"
         android:label="Главная"
         tools:layout="@layout/fragment_home" />
 
-    <!--  Карта -->
     <fragment
         android:id="@+id/mapFragment"
         android:name="com.example.togetherapp.presentation.screens.map.MapFragment"
         android:label="Карта"
         tools:layout="@layout/fragment_map" />
 
-    <!--  Подборки -->
     <fragment
         android:id="@+id/collectionsFragment"
         android:name="com.example.togetherapp.presentation.screens.personalcollection.PersonalCollectionsFragment"
         android:label="Мои подборки"
         tools:layout="@layout/fragment_collections">
 
-        <!-- режим добавления места -->
         <argument
             android:name="isAddingMode"
-            app:argType="boolean"
-            android:defaultValue="false" />
+            android:defaultValue="false"
+            app:argType="boolean" />
 
-        <!--  создать подборку -->
         <action
             android:id="@+id/action_collectionsFragment_to_createCollectionFragment"
             app:destination="@id/createCollectionFragment" />
 
-        <!-- детали подборки -->
         <action
             android:id="@+id/action_collectionsFragment_to_collectionDetailFragment"
             app:destination="@id/collectionDetailFragment" />
     </fragment>
 
-    <!--  Создание подборки -->
     <fragment
         android:id="@+id/createCollectionFragment"
         android:name="com.example.togetherapp.presentation.screens.personalcollection.CreateCollectionFragment"
         android:label="Создать подборку"
         tools:layout="@layout/create_collection_screen" />
 
-    <!-- Детали подборки -->
     <fragment
         android:id="@+id/collectionDetailFragment"
         android:name="com.example.togetherapp.presentation.screens.personalcollection.CollectionDetailFragment"
         android:label="Подборка"
         tools:layout="@layout/fragment_collection_detail" />
 
-    <!--  Профиль  -->
+    <fragment
+        android:id="@+id/friendsFragment"
+        android:name="com.example.togetherapp.presentation.screens.friends.FriendsFragment"
+        android:label="Друзья"
+        tools:layout="@layout/fragment_friends" />
+
     <fragment
         android:id="@+id/profileFragment"
         android:name="com.example.togetherapp.presentation.screens.profile.ProfileFragment"
         android:label="Профиль"
-        tools:layout="@layout/fragment_profile" />
+        tools:layout="@layout/fragment_profile">
+
+        <action
+            android:id="@+id/action_profileFragment_to_friendsFragment"
+            app:destination="@id/friendsFragment" />
+
+        <action
+            android:id="@+id/action_profileFragment_to_collectionsFragment"
+            app:destination="@id/collectionsFragment" />
+    </fragment>
 
 </navigation>
