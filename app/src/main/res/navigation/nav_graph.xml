@@ -5,65 +5,63 @@
     android:id="@+id/nav_graph"
     app:startDestination="@id/homeFragment">
 
-    <!-- Главный экран -->
+    <!--  Главная -->
     <fragment
         android:id="@+id/homeFragment"
         android:name="com.example.togetherapp.presentation.screens.home.HomeFragment"
         android:label="Главная"
         tools:layout="@layout/fragment_home" />
 
-    <!-- Карта -->
+    <!--  Карта -->
     <fragment
         android:id="@+id/mapFragment"
         android:name="com.example.togetherapp.presentation.screens.map.MapFragment"
         android:label="Карта"
         tools:layout="@layout/fragment_map" />
 
-    <!-- Личные подборки -->
-    <!-- Личные подборки -->
+    <!--  Подборки -->
     <fragment
         android:id="@+id/collectionsFragment"
         android:name="com.example.togetherapp.presentation.screens.personalcollection.PersonalCollectionsFragment"
         android:label="Мои подборки"
         tools:layout="@layout/fragment_collections">
 
-        <!-- ✅ НОВОЕ: аргумент для режима -->
+        <!-- режим добавления места -->
         <argument
             android:name="isAddingMode"
             app:argType="boolean"
             android:defaultValue="false" />
 
-        <!-- Переход на экран создания коллекции -->
+        <!--  создать подборку -->
         <action
             android:id="@+id/action_collectionsFragment_to_createCollectionFragment"
             app:destination="@id/createCollectionFragment" />
 
-        <!-- Переход на детальный просмотр подборки -->
+        <!-- детали подборки -->
         <action
             android:id="@+id/action_collectionsFragment_to_collectionDetailFragment"
             app:destination="@id/collectionDetailFragment" />
     </fragment>
 
-    <!-- Экран создания подборки -->
+    <!--  Создание подборки -->
     <fragment
         android:id="@+id/createCollectionFragment"
         android:name="com.example.togetherapp.presentation.screens.personalcollection.CreateCollectionFragment"
         android:label="Создать подборку"
         tools:layout="@layout/create_collection_screen" />
 
-    <!-- Профиль (ВРЕМЕННО ОТКЛЮЧЕН, пока нет ViewModel и State) -->
-    <!--
-    <fragment
-        android:id="@+id/profileFragment"
-        android:name="com.example.togetherapp.presentation.screens.profile.ProfileFragment"
-        android:label="Профиль"
-        tools:layout="@layout/fragment_profile" />
-    -->
-    <!-- Экран детального просмотра подборки -->
+    <!-- Детали подборки -->
     <fragment
         android:id="@+id/collectionDetailFragment"
         android:name="com.example.togetherapp.presentation.screens.personalcollection.CollectionDetailFragment"
         android:label="Подборка"
         tools:layout="@layout/fragment_collection_detail" />
+
+    <!--  Профиль  -->
+    <fragment
+        android:id="@+id/profileFragment"
+        android:name="com.example.togetherapp.presentation.screens.profile.ProfileFragment"
+        android:label="Профиль"
+        tools:layout="@layout/fragment_profile" />
 
 </navigation>

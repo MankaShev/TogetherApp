@@ -11,6 +11,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.togetherapp.presentation.screens.login.LoginActivity
+import com.example.togetherapp.presentation.screens.register.RegisterActivity
 import com.example.togetherapp.data.local.SessionManager
 import com.example.togetherapp.data.repository.CollectionRepositoryImpl
 import com.example.togetherapp.data.repository.PlaceRepositoryImpl
@@ -72,19 +73,17 @@ class PersonalCollectionsFragment : Fragment() {
                 val selectedPlace = sharedViewModel.selectedPlace.value
 
                 if (isAddingMode || selectedPlace != null) {
-                    // СЦЕНАРИЙ 1: Пришли с карты - добавляем место в коллекцию
                     addPlaceToCollection(collection)
                 } else {
-                    // СЦЕНАРИЙ 2: Просто просмотр коллекции - открываем детали
                     openCollectionDetails(collection)
                 }
             }
         )
+
         binding.rvCollections.layoutManager = LinearLayoutManager(requireContext())
         binding.rvCollections.adapter = adapter
     }
 
-    // Новый метод для открытия деталей коллекции
     private fun openCollectionDetails(collection: CollectionModel) {
         val bundle = Bundle().apply {
             putInt("collectionId", collection.id)
@@ -101,11 +100,7 @@ class PersonalCollectionsFragment : Fragment() {
     private fun addPlaceToCollection(collection: CollectionModel) {
         val place = sharedViewModel.selectedPlace.value
         if (place == null) {
-            Toast.makeText(
-                requireContext(),
-                "Сначала выберите место на карте",
-                Toast.LENGTH_SHORT
-            ).show()
+            Toast.makeText(requireContext(), "Сначала выберите место на карте", Toast.LENGTH_SHORT).show()
             return
         }
 
@@ -114,10 +109,17 @@ class PersonalCollectionsFragment : Fragment() {
     }
 
     private fun setupListeners() {
-        binding.btnLogin.setOnClickListener {
+
+        // КНОПКИ ГОСТЯ
+        binding.btnLoginGuest.setOnClickListener {
             val intent = Intent(requireContext(), LoginActivity::class.java)
             startActivity(intent)
             requireActivity().finish()
+        }
+
+        binding.btnRegisterGuest.setOnClickListener {
+            val intent = Intent(requireContext(), RegisterActivity::class.java)
+            startActivity(intent)
         }
 
         binding.btnRetry.setOnClickListener {
@@ -157,29 +159,47 @@ class PersonalCollectionsFragment : Fragment() {
     }
 
     private fun renderState(state: CollectionsUiState) {
+
+        //  guest режим
+        if (sessionManager.getUserId() == -1) {
+            showGuestState()
+            return
+        }
+
         hideAllStates()
+
         when (state) {
             is CollectionsUiState.Loading -> {
-                if (sharedViewModel.selectedPlace.value == null) {
-                    binding.progressLoading.visibility = View.VISIBLE
-                }
+                binding.progressLoading.visibility = View.VISIBLE
             }
-            is CollectionsUiState.Unauthorized -> binding.layoutUnauthorized.visibility = View.VISIBLE
-            is CollectionsUiState.Empty -> binding.layoutEmpty.visibility = View.VISIBLE
+
+            is CollectionsUiState.Empty -> {
+                binding.layoutEmpty.visibility = View.VISIBLE
+            }
+
             is CollectionsUiState.Error -> {
                 binding.layoutError.visibility = View.VISIBLE
                 binding.tvErrorMessage.text = state.message
             }
+
             is CollectionsUiState.Success -> {
                 binding.rvCollections.visibility = View.VISIBLE
                 adapter.submitList(state.collections)
             }
+
+            else -> {}
         }
+    }
+
+    // НОВЫЙ МЕТОД
+    private fun showGuestState() {
+        hideAllStates()
+        binding.layoutGuest.visibility = View.VISIBLE
     }
 
     private fun hideAllStates() {
         binding.progressLoading.visibility = View.GONE
-        binding.layoutUnauthorized.visibility = View.GONE
+        binding.layoutGuest.visibility = View.GONE
         binding.layoutEmpty.visibility = View.GONE
         binding.layoutError.visibility = View.GONE
         binding.rvCollections.visibility = View.GONE
