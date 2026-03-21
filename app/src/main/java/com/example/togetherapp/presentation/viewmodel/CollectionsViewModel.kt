@@ -4,7 +4,6 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.togetherapp.domain.models.CollectionModel
 import com.example.togetherapp.domain.models.SelectedPlace
 import com.example.togetherapp.domain.repository.CollectionRepository
 import com.example.togetherapp.domain.usecase.AddPlaceToCollectionUseCase
@@ -36,12 +35,10 @@ class CollectionsViewModel(
                 if (collectionsFromDb.isNotEmpty()) {
                     _state.value = CollectionsUiState.Success(collectionsFromDb)
                 } else {
-                    // ✅ НЕТ КОЛЛЕКЦИЙ
                     _state.value = CollectionsUiState.Empty
                 }
 
             } catch (e: Exception) {
-                // ✅ ОШИБКА
                 _state.value = CollectionsUiState.Error(
                     e.message ?: "Ошибка загрузки коллекций"
                 )
@@ -69,11 +66,13 @@ class CollectionsViewModel(
         val errorMessage: String? = null
     )
 
-    // Добавьте метод для добавления места:
-    fun addPlaceToCollection(collectionId: Int, collectionName: String, place: SelectedPlace) {
+    fun addPlaceToCollection(
+        collectionId: Int,
+        collectionName: String,
+        place: SelectedPlace
+    ) {
         viewModelScope.launch {
             try {
-                // Здесь будет вызов use case
                 addPlaceToCollectionUseCase.execute(collectionId, place)
 
                 _addPlaceResult.value = AddPlaceResult(
@@ -92,7 +91,6 @@ class CollectionsViewModel(
         }
     }
 
-    // Добавьте метод для сброса результата:
     fun consumeAddPlaceResult() {
         _addPlaceResult.value = null
     }

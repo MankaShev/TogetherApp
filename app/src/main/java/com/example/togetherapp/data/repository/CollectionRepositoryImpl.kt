@@ -3,6 +3,7 @@ package com.example.togetherapp.data.repository
 import com.example.togetherapp.data.local.SessionManager
 import com.example.togetherapp.data.remote.SupabaseClient
 import com.example.togetherapp.domain.models.CollectionModel
+import com.example.togetherapp.domain.models.Place
 import com.example.togetherapp.domain.models.SelectedPlace
 import com.example.togetherapp.domain.repository.CollectionRepository
 import com.example.togetherapp.domain.repository.PlaceRepository
@@ -68,7 +69,11 @@ class CollectionRepositoryImpl(
         }
     }
 
-    override suspend fun createCollection(name: String, description: String, accessType: String) {
+    override suspend fun createCollection(
+        name: String,
+        description: String,
+        accessType: String
+    ) {
         val userId = sessionManager.getUserId()
         if (userId == -1) return
 
@@ -85,12 +90,13 @@ class CollectionRepositoryImpl(
             .insert(dto)
     }
 
-    override suspend fun addPlace(collectionId: Int, place: SelectedPlace) {
+    override suspend fun addPlace(
+        collectionId: Int,
+        place: SelectedPlace
+    ) {
         try {
-            // 1. Получаем или создаем место в таблице places
             val savedPlace = placeRepository.getOrCreatePlace(place)
 
-            // 2. Проверяем, есть ли уже связь
             val existingLinks = SupabaseClient.supabase
                 .from("collection_places")
                 .select()
@@ -102,7 +108,6 @@ class CollectionRepositoryImpl(
 
             if (existingLinks.isNotEmpty()) return
 
-            // 3. Создаем связь
             val dto = CollectionPlaceInsertDto(
                 collection_id = collectionId,
                 place_id = savedPlace.id,
@@ -119,5 +124,24 @@ class CollectionRepositoryImpl(
             println("Ошибка при добавлении места: ${e.message}")
             throw e
         }
+    }
+
+    override suspend fun getPlacesForCollection(collectionId: Int): List<Place> {
+        val links = SupabaseClient.supabase
+            .from("collection_places")
+            .select()
+            .decodeList<CollectionPlaceDbDto>()
+            .filter { it.collection_id == collectionId }
+
+        if (links.isEmpty()) return emptyList()
+
+        val allPlaces = SupabaseClient.supabase
+            .from("places")
+            .select()
+            .decodeList<Place>()
+
+        val placeIds = links.map { it.place_id }.toSet()
+
+        return allPlaces.filter { it.id in placeIds }
     }
 }
