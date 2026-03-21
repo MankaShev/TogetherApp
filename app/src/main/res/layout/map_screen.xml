@@ -66,8 +66,10 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="24dp"
                 android:padding="12dp"
-                android:text="Добавить в коллекцию"
-                android:textAllCaps="false" />
+                android:text="@string/add_place_in_collection"
+                android:textAllCaps="false"
+                android:textColor="@android:color/white"
+                android:backgroundTint="@color/purple_500"/>
 
         </LinearLayout>
     </androidx.core.widget.NestedScrollView>
