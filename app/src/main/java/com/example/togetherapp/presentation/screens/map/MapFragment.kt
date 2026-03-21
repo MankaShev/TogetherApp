@@ -7,6 +7,7 @@ import android.view.ViewGroup
 import android.widget.Toast
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.fragment.findNavController
@@ -150,9 +151,8 @@ class MapFragment : Fragment() {
                         Toast.LENGTH_SHORT
                     ).show()
 
-                    binding.mapContainer.addToCollectionButton.text = "Добавлено ✓"
-                    binding.mapContainer.addToCollectionButton.isEnabled = false
-
+                    bottomSheetBehavior?.state = BottomSheetBehavior.STATE_HIDDEN
+                    removeSelectedMark()
                     currentPlace = null
                     sharedViewModel.consumeNavigationEvent()
                 }
@@ -198,36 +198,26 @@ class MapFragment : Fragment() {
             )
         )
 
-        // По умолчанию прячем шторку
         bottomSheetBehavior?.state = BottomSheetBehavior.STATE_HIDDEN
 
-        // Инициализируем слой
         userLocationLayer = mapKit.createUserLocationLayer(mapView.mapWindow)
         userLocationLayer.isVisible = true
 
-        // Проверяем разрешения и, если можно, двигаем карту к пользователю
         checkPermissionsAndMove()
 
         // Создаем объект слушателя
-        mapInputListener = object : com.yandex.mapkit.map.InputListener {
-            override fun onMapTap(map: com.yandex.mapkit.map.Map, point: Point) {
+        mapInputListener = object : InputListener {
+            override fun onMapTap(map: Map, point: Point) {
                 // При нажатии на карту все списки мест закрываются
                 binding.cvSearchResults.visibility = View.GONE
-                // Очищаем шторку
+
                 binding.mapContainer.placeNameText.text = ""
                 binding.mapContainer.placeAddressText.text = ""
                 binding.mapContainer.categoryText.text = ""
 
-                binding.mapContainer.addToCollectionButton.text = "Добавить в коллекцию"
-                binding.mapContainer.addToCollectionButton.isEnabled = true
-
                 currentPlace = null
                 bottomSheetBehavior?.state = BottomSheetBehavior.STATE_HIDDEN
-
-                // Безопасное удаление старого маркера
                 removeSelectedMark()
-
-                // Передаем координаты в поиск
                 startSearch(point)
             }
 
@@ -238,7 +228,7 @@ class MapFragment : Fragment() {
     }
 
     private fun checkPermissionsAndMove() {
-        if (androidx.core.content.ContextCompat.checkSelfPermission(
+        if (ContextCompat.checkSelfPermission(
                 requireContext(),
                 android.Manifest.permission.ACCESS_FINE_LOCATION
             ) == android.content.pm.PackageManager.PERMISSION_GRANTED
@@ -265,7 +255,7 @@ class MapFragment : Fragment() {
             } ?: run {
                 moveToUserWithZoom()
             }
-        }, 2000)
+        }, 1000)
     }
 
     private fun showPlaceInBottomSheet(name: String, address: String, category: String, point: Point) {
@@ -284,17 +274,13 @@ class MapFragment : Fragment() {
         selectedPlacePlacemark = mapView.mapWindow.map.mapObjects.addPlacemark().apply {
             geometry = point
 
-                // Устанавливаем иконку с настройками стиля
                 setIcon(
                     com.yandex.runtime.image.ImageProvider.fromResource(
                         requireContext(),
                         R.drawable.ic_selected_pin
                     ),
                     com.yandex.mapkit.map.IconStyle().apply {
-                        // ставим картинку не центром, а серединой нижнего края
                         anchor = android.graphics.PointF(0.5f, 1.0f)
-
-                        // Уменьшаем для аккуратности
                         scale = 0.75f
                     }
                 )
@@ -310,13 +296,11 @@ class MapFragment : Fragment() {
         binding.mapContainer.placeAddressText.text = address
         binding.mapContainer.categoryText.text = category
 
-        binding.mapContainer.addToCollectionButton.text = "Добавить в коллекцию"
-        binding.mapContainer.addToCollectionButton.isEnabled = true
-
         bottomSheetBehavior?.state = BottomSheetBehavior.STATE_EXPANDED
     }
 
     private fun startSearch(point: Point) {
+        searchSession?.cancel()
         val searchOptions = SearchOptions().apply {
             searchTypes = SearchType.BIZ.value
             resultPageSize = 20
@@ -327,7 +311,7 @@ class MapFragment : Fragment() {
             16,
             searchOptions,
             object : Session.SearchListener {
-                override fun onSearchResponse(response: com.yandex.mapkit.search.Response) {
+                override fun onSearchResponse(response: Response) {
                     val results = response.collection.children
 
                     when {
@@ -367,7 +351,7 @@ class MapFragment : Fragment() {
     }
 
     private fun showPlaceData(obj: com.yandex.mapkit.GeoObject?, point: Point) {
-        val metadata = obj?.metadataContainer?.getItem(com.yandex.mapkit.search.BusinessObjectMetadata::class.java)
+        val metadata = obj?.metadataContainer?.getItem(BusinessObjectMetadata::class.java)
         if (metadata != null) {
             val name = metadata.name
             val address = metadata.address.formattedAddress
@@ -379,6 +363,7 @@ class MapFragment : Fragment() {
     }
 
     private fun startTextSearch(query: String) {
+        searchSession?.cancel()
         val searchOptions = SearchOptions().apply {
             searchTypes = SearchType.BIZ.value
             resultPageSize = 7
@@ -403,6 +388,11 @@ class MapFragment : Fragment() {
 
                     if (results.isEmpty()) {
                         android.util.Log.d("MapSearch", "Ничего не найдено")
+                        Toast.makeText(
+                            requireContext(),
+                            "Ничего не найдено:(",
+                            Toast.LENGTH_SHORT
+                        ).show()
                     }
                 }
 
@@ -414,11 +404,7 @@ class MapFragment : Fragment() {
     }
 
     private fun removeSelectedMark() {
-        selectedPlacePlacemark?.let {
-            if (it.isValid) {
-                mapView.mapWindow.map.mapObjects.remove(it)
-            }
-        }
+        selectedPlacePlacemark?.let { if (it.isValid) mapView.mapWindow.map.mapObjects.remove(it) }
         selectedPlacePlacemark = null
     }
 
@@ -438,8 +424,11 @@ class MapFragment : Fragment() {
     }
 
     override fun onDestroyView() {
-        super.onDestroyView()
+        mapInputListener?.let { mapView.mapWindow.map.removeInputListener(it) }
+        searchSession?.cancel()
         _binding = null
+        selectedPlacePlacemark = null
         currentPlace = null
+        super.onDestroyView()
     }
 }
