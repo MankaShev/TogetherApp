@@ -343,7 +343,7 @@ class MapFragment : Fragment() {
                     }
                 }
 
-                override fun onSearchError(error: com.yandex.runtime.Error) {
+                override fun onSearchError(error: Error) {
                     android.util.Log.e("MapStep", "Ошибка: $error")
                 }
             }
