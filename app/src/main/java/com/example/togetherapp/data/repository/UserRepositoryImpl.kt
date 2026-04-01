@@ -1,12 +1,15 @@
 package com.example.togetherapp.data.repository
 
 import com.example.togetherapp.data.remote.SupabaseClient
+import com.example.togetherapp.data.remote.RegisterUserRequest
+import com.example.togetherapp.domain.models.RegisterResult
 import com.example.togetherapp.domain.models.User
 import com.example.togetherapp.domain.repository.UserRepository
-import io.github.jan.supabase.postgrest.query.Columns
-import kotlinx.coroutines.withTimeout
-import kotlinx.coroutines.TimeoutCancellationException
 import io.github.jan.supabase.postgrest.from
+import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.withTimeout
+import java.io.IOException
+
 class UserRepositoryImpl : UserRepository {
 
     private val client = SupabaseClient.supabase
@@ -14,25 +17,23 @@ class UserRepositoryImpl : UserRepository {
 
     override suspend fun login(login: String, password: String): User? {
         return try {
-            println("UserRepository: попытка входа для $login")
+            println("UserRepository: попытка входа для login=$login")
 
-            val result = client.from("users")
-                .select()
+            withTimeout(REQUEST_TIMEOUT) {
+                val users = client
+                    .from("users")
+                    .select {
+                        filter {
+                            eq("login", login)
+                            eq("password", password)
+                        }
+                    }
+                    .decodeList<User>()
 
-            val users = result.decodeList<User>()
-            println("TEST USERS = $users")
-
-            val user = users.firstOrNull { it.login == login && it.password == password }
-
-            if (user != null) {
-                println("UserRepository: найден пользователь $user")
-            } else {
-                println("UserRepository: пользователь не найден")
+                users.firstOrNull()
             }
-
-            user
         } catch (e: Exception) {
-            println("UserRepository: Ошибка ${e.message}")
+            println("UserRepository: ошибка login: ${e.message}")
             e.printStackTrace()
             null
         }
@@ -43,83 +44,88 @@ class UserRepositoryImpl : UserRepository {
             println("UserRepository: getUserById($userId)")
 
             withTimeout(REQUEST_TIMEOUT) {
-                val result = client.from("users").select(
-                    columns = Columns.raw("*")
-                ) {
-                    filter {
-                        eq("id", userId)
+                val users = client
+                    .from("users")
+                    .select {
+                        filter {
+                            eq("id", userId)
+                        }
                     }
-                }
+                    .decodeList<User>()
 
-                val usersData = result.data as? List<Map<String, Any?>>
-                val userMap = usersData?.firstOrNull()
-
-                if (userMap != null) {
-                    val user = User(
-                        id = userId,
-                        login = userMap["login"] as? String ?: "",
-                        password = userMap["password"] as? String ?: "",
-                        avatar_url = userMap["avatar_url"] as? String,
-                        is_onboarding_completed = userMap["is_onboarding_completed"] as? Boolean ?: false
-                    )
-
-                    println("UserRepository: найден пользователь $user")
-                    user
-                } else {
-                    println("UserRepository: пользователь с id=$userId не найден")
-                    null
-                }
+                users.firstOrNull()
             }
-
-        } catch (e: TimeoutCancellationException) {
-            println("UserRepository: Таймаут getUserById")
-            null
         } catch (e: Exception) {
-            println("UserRepository: Exception ${e.message}")
+            println("UserRepository: ошибка getUserById: ${e.message}")
             e.printStackTrace()
             null
         }
     }
 
-    override suspend fun registerUser(login: String, password: String, avatarUrl: String?): User? {
+    override suspend fun registerUser(
+        login: String,
+        password: String,
+        avatarUrl: String?
+    ): RegisterResult {
         return try {
-            println("UserRepository: registerUser для $login")
+            println("UserRepository: registerUser для login=$login")
 
             withTimeout(REQUEST_TIMEOUT) {
-                val result = client.from("users").insert(
-                    mapOf(
-                        "login" to login,
-                        "password" to password,
-                        "avatar_url" to avatarUrl,
-                        "is_onboarding_completed" to false
-                    )
+                val existingUsers = client
+                    .from("users")
+                    .select {
+                        filter {
+                            eq("login", login)
+                        }
+                    }
+                    .decodeList<User>()
+
+                if (existingUsers.isNotEmpty()) {
+                    println("UserRepository: пользователь с таким логином уже существует")
+                    return@withTimeout RegisterResult.UserAlreadyExists
+                }
+
+                val newUser = RegisterUserRequest(
+                    login = login,
+                    password = password,
+                    avatar_url = avatarUrl,
+                    is_onboarding_completed = false
                 )
 
-                val insertedData = result.data as? List<Map<String, Any?>>
-                val userMap = insertedData?.firstOrNull()
+                client
+                    .from("users")
+                    .insert(newUser)
 
-                if (userMap != null) {
-                    val user = User(
-                        id = (userMap["id"] as? Number)?.toInt() ?: 0,
-                        login = userMap["login"] as? String ?: "",
-                        password = userMap["password"] as? String ?: "",
-                        avatar_url = userMap["avatar_url"] as? String,
-                        is_onboarding_completed = userMap["is_onboarding_completed"] as? Boolean ?: false
-                    )
-                    println("UserRepository: зарегистрирован пользователь $user")
-                    user
+                val createdUsers = client
+                    .from("users")
+                    .select {
+                        filter {
+                            eq("login", login)
+                            eq("password", password)
+                        }
+                    }
+                    .decodeList<User>()
+
+                val createdUser = createdUsers.firstOrNull()
+
+                if (createdUser != null) {
+                    println("UserRepository: зарегистрирован пользователь $createdUser")
+                    RegisterResult.Success(createdUser)
                 } else {
-                    println("UserRepository: регистрация не удалась")
-                    null
+                    println("UserRepository: пользователь не найден после insert")
+                    RegisterResult.UnknownError("Не удалось получить созданного пользователя")
                 }
             }
         } catch (e: TimeoutCancellationException) {
-            println("UserRepository: Таймаут регистрации")
-            null
+            println("UserRepository: таймаут регистрации")
+            RegisterResult.NetworkError
+        } catch (e: IOException) {
+            println("UserRepository: ошибка сети при регистрации: ${e.message}")
+            RegisterResult.NetworkError
         } catch (e: Exception) {
-            println("UserRepository: Exception ${e.message}")
+            println("UserRepository: ошибка registerUser: ${e.message}")
             e.printStackTrace()
-            null
+            RegisterResult.UnknownError(e.message ?: "Неизвестная ошибка регистрации")
         }
     }
 }

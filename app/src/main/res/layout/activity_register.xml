@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/registration_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <!-- ФОРМА РЕГИСТРАЦИИ (центрирована) -->
+    <!-- Форма регистрации -->
     <LinearLayout
+        android:id="@+id/register_form_container"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="center"
@@ -14,22 +14,13 @@
         android:padding="24dp">
 
         <EditText
-            android:id="@+id/name_box"
+            android:id="@+id/login_box"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:autofillHints="username"
             android:gravity="center"
-            android:hint="Введите имя"
-            android:inputType="textPersonName"
-            android:autofillHints="name" />
-
-        <EditText
-            android:id="@+id/email_box"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:gravity="center"
-            android:hint="Введите email"
-            android:inputType="textEmailAddress" />
+            android:hint="Введите логин"
+            android:inputType="textPersonName" />
 
         <EditText
             android:id="@+id/password_box"
@@ -56,22 +47,21 @@
             android:layout_marginTop="16dp"
             android:text="Зарегистрироваться" />
 
-        <!-- Текст для перехода на логин -->
         <TextView
             android:id="@+id/go_to_login"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:gravity="center"
-            android:text="Уже есть аккаунт? Войти"
             android:layout_marginTop="16dp"
-            android:textColor="@android:color/black"
+            android:background="?android:attr/selectableItemBackground"
             android:clickable="true"
             android:focusable="true"
-            android:background="?android:attr/selectableItemBackground" />
+            android:gravity="center"
+            android:text="Уже есть аккаунт? Войти"
+            android:textColor="@android:color/black" />
 
     </LinearLayout>
 
-    <!-- КОНТЕЙНЕР СОСТОЯНИЙ (изначально скрыт) -->
+    <!-- Контейнер состояний -->
     <FrameLayout
         android:id="@+id/state_container"
         android:layout_width="match_parent"
@@ -79,7 +69,7 @@
         android:background="@android:color/white"
         android:visibility="gone">
 
-        <!-- Загрузка/отправка -->
+        <!-- Отправка -->
         <LinearLayout
             android:id="@+id/layoutSending"
             android:layout_width="match_parent"
@@ -100,7 +90,6 @@
                 android:text="Отправка данных..."
                 android:textSize="16sp"
                 android:textStyle="bold" />
-
         </LinearLayout>
 
         <!-- Ошибка ввода -->
@@ -124,20 +113,20 @@
                 android:id="@+id/tvErrorTitle"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
                 android:text="Ошибка регистрации"
                 android:textSize="18sp"
-                android:textStyle="bold"
-                android:layout_marginTop="16dp" />
+                android:textStyle="bold" />
 
             <TextView
                 android:id="@+id/register_error_text"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
-                android:text="Проверьте правильность введенных данных"
-                android:textSize="14sp"
                 android:gravity="center"
-                android:textColor="@android:color/black" />
+                android:text="Проверьте правильность введённых данных"
+                android:textColor="@android:color/black"
+                android:textSize="14sp" />
 
             <Button
                 android:id="@+id/btnRetryInput"
@@ -145,10 +134,9 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="24dp"
                 android:text="Исправить" />
-
         </LinearLayout>
 
-        <!-- Ошибка сети/сервера -->
+        <!-- Ошибка сети -->
         <LinearLayout
             android:id="@+id/layoutErrorNetwork"
             android:layout_width="match_parent"
@@ -185,12 +173,11 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="24dp"
                 android:text="Повторить" />
-
         </LinearLayout>
 
-        <!-- Email уже используется (специфичная ошибка) -->
+        <!-- Логин уже занят -->
         <LinearLayout
-            android:id="@+id/layoutEmailExists"
+            android:id="@+id/layoutUserExists"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:gravity="center"
@@ -202,24 +189,25 @@
                 android:layout_width="80dp"
                 android:layout_height="80dp"
                 android:gravity="center"
-                android:text="📧"
+                android:text="👤"
                 android:textSize="40sp" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Email уже используется"
+                android:layout_marginTop="16dp"
+                android:text="Логин уже занят"
                 android:textSize="18sp"
-                android:textStyle="bold"
-                android:layout_marginTop="16dp" />
+                android:textStyle="bold" />
 
             <TextView
+                android:id="@+id/user_exists_text"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
-                android:text="Попробуйте войти или используйте другой email"
-                android:textSize="14sp"
-                android:gravity="center" />
+                android:gravity="center"
+                android:text="Попробуйте другой логин или войдите в аккаунт"
+                android:textSize="14sp" />
 
             <Button
                 android:id="@+id/btnGoToLogin"
@@ -227,7 +215,6 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="24dp"
                 android:text="Перейти ко входу" />
-
         </LinearLayout>
 
     </FrameLayout>

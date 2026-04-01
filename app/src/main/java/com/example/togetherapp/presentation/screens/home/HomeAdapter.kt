@@ -14,7 +14,6 @@ class HomeAdapter(
 
     fun submitList(newItems: List<CollectionModel>) {
         items = newItems
-
         notifyDataSetChanged()
     }
 
@@ -39,13 +38,22 @@ class HomeAdapter(
     ) : RecyclerView.ViewHolder(binding.root) {
 
         fun bind(collection: CollectionModel) {
-            // Заполняем данными
             binding.collectionName.text = collection.title
-            binding.collectionDescription.text = collection.description
-            // Если будет количество мест, добавь функцию в CollectionModel:
-            // binding.numPlaces.text = "${collection.placeCount} мест"
+            binding.collectionDescription.text = collection.description ?: ""
 
-            // Обработка клика
+            binding.numPlaces.text = when (collection.placesCount) {
+                1 -> "1 место"
+                2, 3, 4 -> "${collection.placesCount} места"
+                else -> "${collection.placesCount} мест"
+            }
+
+            binding.collectionAccessType.text = when (collection.access_type) {
+                "private" -> "Приватная"
+                "public" -> "Публичная"
+                "friends" -> "Для друзей"
+                else -> collection.access_type
+            }
+
             binding.root.setOnClickListener {
                 onItemClick(collection)
             }

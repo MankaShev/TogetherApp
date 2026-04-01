@@ -70,12 +70,12 @@ dependencies {
 
     implementation("io.ktor:ktor-client-android:2.3.7")
 
-    implementation("com.yandex.android:maps.mobile:4.5.1-full")
-
+    implementation("com.yandex.android:maps.mobile:4.33.1-full")
+    implementation("com.google.android.gms:play-services-location:21.0.1")
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
-
+    implementation("com.github.bumptech.glide:glide:4.16.0")
     implementation(platform(libs.androidx.compose.bom))
 
     implementation(libs.androidx.compose.ui)
