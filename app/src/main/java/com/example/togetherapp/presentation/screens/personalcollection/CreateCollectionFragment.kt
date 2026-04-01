@@ -12,6 +12,7 @@ import androidx.navigation.fragment.findNavController
 import com.example.togetherapp.data.local.SessionManager
 import com.example.togetherapp.data.remote.SupabaseClient
 import com.example.togetherapp.databinding.CreateCollectionScreenBinding
+import com.example.togetherapp.domain.models.CollectionModel
 import io.github.jan.supabase.postgrest.from
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
@@ -29,20 +30,21 @@ class CreateCollectionFragment : Fragment() {
     private var _binding: CreateCollectionScreenBinding? = null
     private val binding get() = _binding!!
 
-    // SessionManager singleton
     private lateinit var sessionManager: SessionManager
-    private val TAG = "CreateCollectionFragment"
+
+    companion object {
+        private const val TAG = "CreateCollectionFragment"
+    }
 
     override fun onCreateView(
-        inflater: LayoutInflater, container: ViewGroup?,
+        inflater: LayoutInflater,
+        container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
         _binding = CreateCollectionScreenBinding.inflate(inflater, container, false)
-
-        // Инициализация singleton SessionManager
         sessionManager = SessionManager.getInstance(requireContext())
-        Log.i(TAG, "onCreateView: SessionManager initialized")
-        Log.i(TAG, "onCreateView: current userId = ${sessionManager.getUserId()}")
+
+        Log.i(TAG, "SessionManager initialized, userId=${sessionManager.getUserId()}")
 
         return binding.root
     }
@@ -50,48 +52,78 @@ class CreateCollectionFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        // По умолчанию можно выбрать приватную подборку
         binding.radioPrivate.isChecked = true
 
+        binding.btnBack.setOnClickListener {
+            findNavController().popBackStack()
+        }
+
+        setupListeners()
+    }
+
+    private fun setupListeners() {
         binding.saveCollectionButton.setOnClickListener {
+            binding.nameTextInputLayout.error = null
+
             val name = binding.nameEditText.text?.toString().orEmpty().trim()
-            val description = binding.descriptionEditText.text?.toString()?.trim()
+            val description = binding.descriptionEditText.text?.toString()?.trim().orEmpty()
+            val accessType = getSelectedAccessType()
 
-            val accessType = when (binding.accessTypeRadioGroup.checkedRadioButtonId) {
-                binding.radioPrivate.id -> "private"
-                binding.radioPublic.id -> "public"
-                binding.radioFriends.id -> "friends"
-                else -> ""
-            }
-
-            if (name.isBlank()) {
-                binding.nameTextInputLayout.error = "Название не может быть пустым"
-                return@setOnClickListener
-            } else {
-                binding.nameTextInputLayout.error = null
-            }
-
-            if (accessType.isBlank()) {
-                Toast.makeText(requireContext(), "Выберите тип коллекции", Toast.LENGTH_SHORT).show()
-                return@setOnClickListener
-            }
+            if (!validateInput(name, accessType)) return@setOnClickListener
 
             val userId = sessionManager.getUserId()
-            Log.i(TAG, "Attempt to save collection for userId=$userId")
-
             if (userId == -1) {
-                Toast.makeText(requireContext(), "Пользователь не найден", Toast.LENGTH_SHORT).show()
-                Log.w(TAG, "User not found in SessionManager!")
+                Toast.makeText(
+                    requireContext(),
+                    "Пользователь не найден",
+                    Toast.LENGTH_SHORT
+                ).show()
+                Log.w(TAG, "User not found in SessionManager")
                 return@setOnClickListener
             }
 
             saveCollection(
                 name = name,
-                description = description,
+                description = description.ifBlank { null },
                 userId = userId,
                 accessType = accessType
             )
         }
+
+        binding.addPlaceButton.setOnClickListener {
+            Toast.makeText(
+                requireContext(),
+                "Сначала сохраните подборку, затем добавьте места",
+                Toast.LENGTH_SHORT
+            ).show()
+        }
+    }
+
+    private fun getSelectedAccessType(): String {
+        return when (binding.accessTypeRadioGroup.checkedRadioButtonId) {
+            binding.radioPrivate.id -> "private"
+            binding.radioPublic.id -> "public"
+            binding.radioFriends.id -> "friends"
+            else -> ""
+        }
+    }
+
+    private fun validateInput(name: String, accessType: String): Boolean {
+        if (name.isBlank()) {
+            binding.nameTextInputLayout.error = "Название не может быть пустым"
+            return false
+        }
+
+        if (accessType.isBlank()) {
+            Toast.makeText(
+                requireContext(),
+                "Выберите тип подборки",
+                Toast.LENGTH_SHORT
+            ).show()
+            return false
+        }
+
+        return true
     }
 
     private fun saveCollection(
@@ -101,9 +133,29 @@ class CreateCollectionFragment : Fragment() {
         accessType: String
     ) {
         lifecycleScope.launch {
+            setLoading(true)
+
             try {
+                val normalizedTitle = name.trim().lowercase()
+
+                val existingCollections = SupabaseClient.supabase
+                    .from("collections")
+                    .select()
+                    .decodeList<CollectionModel>()
+
+                val alreadyExists = existingCollections.any { collection ->
+                    collection.user_id == userId &&
+                            collection.title.trim().lowercase() == normalizedTitle
+                }
+
+                if (alreadyExists) {
+                    binding.nameTextInputLayout.error =
+                        "Подборка с таким названием уже существует"
+                    return@launch
+                }
+
                 val collectionDto = CollectionInsertDto(
-                    title = name,
+                    title = name.trim(),
                     description = description,
                     user_id = userId,
                     access_type = accessType
@@ -116,9 +168,13 @@ class CreateCollectionFragment : Fragment() {
                     .insert(collectionDto)
 
                 Log.i(TAG, "Collection saved successfully")
-                Toast.makeText(requireContext(), "Коллекция сохранена!", Toast.LENGTH_SHORT).show()
 
-                // Обновляем предыдущий фрагмент
+                Toast.makeText(
+                    requireContext(),
+                    "Подборка сохранена",
+                    Toast.LENGTH_SHORT
+                ).show()
+
                 findNavController().previousBackStackEntry
                     ?.savedStateHandle
                     ?.set("refresh_collections", true)
@@ -127,18 +183,41 @@ class CreateCollectionFragment : Fragment() {
 
             } catch (e: Exception) {
                 Log.e(TAG, "Error saving collection", e)
+
                 Toast.makeText(
                     requireContext(),
-                    "Ошибка при сохранении: ${e.message}",
+                    "Ошибка при сохранении: ${e.message ?: "неизвестная ошибка"}",
                     Toast.LENGTH_LONG
                 ).show()
+            } finally {
+                if (_binding != null) {
+                    setLoading(false)
+                }
             }
         }
     }
 
+    private fun setLoading(isLoading: Boolean) {
+        val enabled = !isLoading
+
+        binding.saveCollectionButton.isEnabled = enabled
+        binding.addPlaceButton.isEnabled = enabled
+        binding.nameEditText.isEnabled = enabled
+        binding.descriptionEditText.isEnabled = enabled
+        binding.radioPrivate.isEnabled = enabled
+        binding.radioPublic.isEnabled = enabled
+        binding.radioFriends.isEnabled = enabled
+
+        // кнопка назад
+        binding.btnBack.isEnabled = enabled
+
+        // можно ещё визуально затемнять кнопку
+        binding.saveCollectionButton.alpha = if (enabled) 1f else 0.5f
+        binding.addPlaceButton.alpha = if (enabled) 1f else 0.5f
+    }
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
-        Log.i(TAG, "onDestroyView: binding cleared")
+        Log.i(TAG, "Binding cleared")
     }
 }

@@ -2,7 +2,6 @@ package com.example.togetherapp.presentation.screens.login
 
 import android.content.Intent
 import android.os.Bundle
-import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.lifecycle.ViewModelProvider
@@ -20,7 +19,8 @@ class LoginActivity : ComponentActivity() {
     private lateinit var binding: ActivityLoginBinding
     private lateinit var viewModel: LoginViewModel
     private lateinit var sessionManager: SessionManager
-    private val TAG = "LoginActivity"
+
+    private var shareToken: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -29,7 +29,7 @@ class LoginActivity : ComponentActivity() {
         setContentView(binding.root)
 
         sessionManager = SessionManager.getInstance(applicationContext)
-        Log.i(TAG, "SessionManager initialized")
+        shareToken = intent.getStringExtra("share_token")
 
         val repository = UserRepositoryImpl()
         val factory = LoginViewModelFactory(application, repository)
@@ -40,38 +40,25 @@ class LoginActivity : ComponentActivity() {
     }
 
     private fun setupClickListeners() {
-
-        //  Вход
         binding.loginButton.setOnClickListener {
             val username = binding.usernameInput.text.toString()
             val password = binding.passwordInput.text.toString()
 
             if (username.isNotBlank() && password.isNotBlank()) {
-                Log.i(TAG, "Attempt login with username=$username")
                 viewModel.login(username, password)
             } else {
                 Toast.makeText(this, "Заполните все поля", Toast.LENGTH_SHORT).show()
             }
         }
 
-        //  ГОСТЕВОЙ ВХОД
         binding.continueWithoutLoginBtn.setOnClickListener {
-            Log.i(TAG, "Continue without login clicked")
-
-            // очищаем старую сессию
             sessionManager.clearSession()
-
             Toast.makeText(this, "Продолжаем без входа", Toast.LENGTH_SHORT).show()
-
-            // Проверка
-            Log.i(TAG, "After clearSession userId = ${sessionManager.getUserId()}")
-
-            navigateToMain()
+            navigateToMain(openInterests = false)
         }
 
-        // 📝 Регистрация
         binding.logRegisterButton.setOnClickListener {
-            navigateToRegister()
+            startActivity(Intent(this, RegisterActivity::class.java))
         }
 
         binding.btnRetryInput.setOnClickListener { hideAllStates() }
@@ -85,24 +72,18 @@ class LoginActivity : ComponentActivity() {
     private fun setupObservers() {
         viewModel.loginState.observe(this) { state ->
             when (state) {
-
                 is LoginViewModel.LoginState.Loading -> showLoading()
 
                 is LoginViewModel.LoginState.Success -> {
                     val user: User = state.user
-
-                    Log.i(TAG, "Login successful: $user")
-
-                    // Сохраняем пользователя
                     sessionManager.saveUser(user)
 
                     Toast.makeText(this, "Вход выполнен", Toast.LENGTH_SHORT).show()
-                    navigateToMain()
+                    navigateToMain(openInterests = !user.is_onboarding_completed)
                 }
 
                 is LoginViewModel.LoginState.Error -> {
                     when (state.errorType) {
-
                         LoginViewModel.LoginState.ErrorType.INPUT_ERROR -> {
                             showInputError(state.message)
                         }
@@ -116,18 +97,18 @@ class LoginActivity : ComponentActivity() {
         }
     }
 
-    private fun navigateToMain() {
-        Log.i(TAG, "Navigating to MainActivity")
-        startActivity(Intent(this, MainActivity::class.java))
+    private fun navigateToMain(openInterests: Boolean = false) {
+        val intent = Intent(this, MainActivity::class.java).apply {
+            putExtra("open_interests", openInterests)
+
+            if (!shareToken.isNullOrBlank()) {
+                putExtra("share_token", shareToken)
+            }
+        }
+
+        startActivity(intent)
         finish()
     }
-
-    private fun navigateToRegister() {
-        Log.i(TAG, "Navigating to RegisterActivity")
-        startActivity(Intent(this, RegisterActivity::class.java))
-    }
-
-    // UI состояния
 
     private fun showLoading() {
         hideAllStates()

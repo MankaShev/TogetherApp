@@ -6,12 +6,14 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
+import androidx.core.os.bundleOf
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.navigation.fragment.findNavController
 import com.example.togetherapp.R
 import com.example.togetherapp.databinding.FragmentProfileBinding
 import com.example.togetherapp.presentation.screens.login.LoginActivity
+import com.google.android.material.bottomnavigation.BottomNavigationView
 
 class ProfileFragment : Fragment() {
 
@@ -37,7 +39,6 @@ class ProfileFragment : Fragment() {
     }
 
     private fun setupListeners() {
-
         binding.btnLogin.setOnClickListener {
             val intent = Intent(requireContext(), LoginActivity::class.java)
             startActivity(intent)
@@ -53,11 +54,32 @@ class ProfileFragment : Fragment() {
         }
 
         binding.btnMyCollections.setOnClickListener {
-            findNavController().navigate(R.id.collectionsFragment)
+            openCollectionsTab()
         }
 
         binding.btnFriends.setOnClickListener {
-            findNavController().navigate(R.id.friendsFragment)
+            findNavController().navigate(R.id.action_profileFragment_to_friendsFragment)
+        }
+
+        binding.btnEditInterests.setOnClickListener {
+            val bundle = bundleOf(
+                "is_edit_mode" to true
+            )
+            findNavController().navigate(
+                R.id.action_profileFragment_to_interestsFragment,
+                bundle
+            )
+        }
+    }
+
+    private fun openCollectionsTab() {
+        val bottomNavigation =
+            requireActivity().findViewById<BottomNavigationView>(R.id.bottom_navigation)
+
+        if (bottomNavigation != null) {
+            bottomNavigation.selectedItemId = R.id.collectionsFragment
+        } else {
+            findNavController().navigate(R.id.collectionsFragment)
         }
     }
 

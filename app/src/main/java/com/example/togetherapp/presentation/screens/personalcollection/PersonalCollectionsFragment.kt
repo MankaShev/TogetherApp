@@ -10,8 +10,10 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.example.togetherapp.R
 import com.example.togetherapp.data.local.SessionManager
 import com.example.togetherapp.data.repository.CollectionRepositoryImpl
+import com.example.togetherapp.data.repository.FriendRepositoryImpl
 import com.example.togetherapp.data.repository.PlaceRepositoryImpl
 import com.example.togetherapp.databinding.FragmentCollectionsBinding
 import com.example.togetherapp.domain.models.CollectionModel
@@ -57,7 +59,12 @@ class PersonalCollectionsFragment : Fragment() {
 
     private fun initViewModel() {
         val placeRepository = PlaceRepositoryImpl()
-        val repository = CollectionRepositoryImpl(sessionManager, placeRepository)
+        val friendRepository = FriendRepositoryImpl()
+        val repository = CollectionRepositoryImpl(
+            sessionManager = sessionManager,
+            placeRepository = placeRepository,
+            friendRepository = friendRepository
+        )
         val factory = CollectionsViewModelFactory(repository)
         viewModel = ViewModelProvider(this, factory)[CollectionsViewModel::class.java]
     }
@@ -65,9 +72,7 @@ class PersonalCollectionsFragment : Fragment() {
     private fun setupRecyclerView() {
         adapter = PersonalCollectionsAdapter(
             onCreateClick = {
-                findNavController().navigate(
-                    com.example.togetherapp.R.id.action_collectionsFragment_to_createCollectionFragment
-                )
+                findNavController().navigate(R.id.action_collectionsFragment_to_createCollectionFragment)
             },
             onItemClick = { collection ->
                 val selectedPlace = sharedViewModel.selectedPlace.value
@@ -85,19 +90,23 @@ class PersonalCollectionsFragment : Fragment() {
     }
 
     private fun openCollectionDetails(collection: CollectionModel) {
+        val currentUserId = sessionManager.getUserId()
+        val currentUserLogin = sessionManager.getUserLogin()
+
         val bundle = Bundle().apply {
             putInt("collectionId", collection.id)
             putString("collectionTitle", collection.title)
             putString("collectionDescription", collection.description ?: "")
             putString("collectionAccessType", collection.access_type)
-            putString(
-                "collectionAuthor",
-                sessionManager.getUserLogin() ?: "Неизвестный автор"
-            )
+            putString("collectionAuthor", currentUserLogin.ifBlank { "Неизвестный автор" })
+            putInt("collectionAuthorId", currentUserId)
+            putString("collectionDeadlineAt", collection.deadline_at)
+            putBoolean("isFromExplore", false)
+            putBoolean("forceOwnerMode", true)
         }
 
         findNavController().navigate(
-            com.example.togetherapp.R.id.action_collectionsFragment_to_collectionDetailFragment,
+            R.id.action_collectionsFragment_to_collectionDetailFragment,
             bundle
         )
     }
@@ -134,9 +143,7 @@ class PersonalCollectionsFragment : Fragment() {
         }
 
         binding.emptyCreateButton.root.setOnClickListener {
-            findNavController().navigate(
-                com.example.togetherapp.R.id.action_collectionsFragment_to_createCollectionFragment
-            )
+            findNavController().navigate(R.id.action_collectionsFragment_to_createCollectionFragment)
         }
     }
 
@@ -192,7 +199,7 @@ class PersonalCollectionsFragment : Fragment() {
                 adapter.submitList(state.collections)
             }
 
-            else -> {}
+            else -> Unit
         }
     }
 

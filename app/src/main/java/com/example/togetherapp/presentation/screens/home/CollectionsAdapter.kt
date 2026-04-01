@@ -3,6 +3,7 @@ package com.example.togetherapp.presentation.screens.home
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageView
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.example.togetherapp.R
@@ -13,6 +14,7 @@ class CollectionsAdapter(
 ) : RecyclerView.Adapter<CollectionsAdapter.CollectionViewHolder>() {
 
     class CollectionViewHolder(view: View) : RecyclerView.ViewHolder(view) {
+        val image: ImageView = view.findViewById(R.id.collectionImage)
         val title: TextView = view.findViewById(R.id.collectionName)
         val description: TextView = view.findViewById(R.id.collectionDescription)
         val numPlaces: TextView = view.findViewById(R.id.numPlaces)
@@ -27,6 +29,9 @@ class CollectionsAdapter(
 
     override fun onBindViewHolder(holder: CollectionViewHolder, position: Int) {
         val collection = collections[position]
+
+        //  Устанавливаем одну и ту же картинку для всех
+        holder.image.setImageResource(R.drawable.ic_arrow_back)
 
         holder.title.text = collection.title
         holder.description.text = collection.description ?: ""

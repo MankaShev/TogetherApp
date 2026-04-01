@@ -5,13 +5,17 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import com.example.togetherapp.databinding.ItemPlaceCardBinding
-import com.example.togetherapp.domain.models.Place
+import com.example.togetherapp.domain.models.CollectionPlaceWithPlace
 
-class CollectionPlacesAdapter : RecyclerView.Adapter<CollectionPlacesAdapter.PlaceViewHolder>() {
+class CollectionPlacesAdapter(
+    private val onCheckInClicked: (item: CollectionPlaceWithPlace) -> Unit,
+    private val onRemoveClicked: (linkId: Int) -> Unit,
+    private val onRouteClicked: (item: CollectionPlaceWithPlace) -> Unit
+) : RecyclerView.Adapter<CollectionPlacesAdapter.PlaceViewHolder>() {
 
-    private val items = mutableListOf<Place>()
+    private val items = mutableListOf<CollectionPlaceWithPlace>()
 
-    fun submitList(newItems: List<Place>) {
+    fun submitList(newItems: List<CollectionPlaceWithPlace>) {
         items.clear()
         items.addAll(newItems)
         notifyDataSetChanged()
@@ -23,7 +27,12 @@ class CollectionPlacesAdapter : RecyclerView.Adapter<CollectionPlacesAdapter.Pla
             parent,
             false
         )
-        return PlaceViewHolder(binding)
+        return PlaceViewHolder(
+            binding = binding,
+            onCheckInClicked = onCheckInClicked,
+            onRemoveClicked = onRemoveClicked,
+            onRouteClicked = onRouteClicked
+        )
     }
 
     override fun onBindViewHolder(holder: PlaceViewHolder, position: Int) {
@@ -33,19 +42,46 @@ class CollectionPlacesAdapter : RecyclerView.Adapter<CollectionPlacesAdapter.Pla
     override fun getItemCount(): Int = items.size
 
     class PlaceViewHolder(
-        private val binding: ItemPlaceCardBinding
+        private val binding: ItemPlaceCardBinding,
+        private val onCheckInClicked: (item: CollectionPlaceWithPlace) -> Unit,
+        private val onRemoveClicked: (linkId: Int) -> Unit,
+        private val onRouteClicked: (item: CollectionPlaceWithPlace) -> Unit
     ) : RecyclerView.ViewHolder(binding.root) {
 
-        fun bind(place: Place) {
+        fun bind(item: CollectionPlaceWithPlace) {
+            val place = item.place
+
             binding.tvPlaceTitle.text = place.title
             binding.tvPlaceAddress.text = place.address ?: "Адрес не указан"
 
             val description = place.description?.trim().orEmpty()
             if (description.isBlank()) {
                 binding.tvPlaceDescription.visibility = View.GONE
+                binding.tvPlaceDescription.text = ""
             } else {
                 binding.tvPlaceDescription.visibility = View.VISIBLE
                 binding.tvPlaceDescription.text = description
+            }
+
+            binding.cbVisited.setOnCheckedChangeListener(null)
+            binding.cbVisited.setOnClickListener(null)
+
+            binding.cbVisited.isChecked = item.isVisited
+            binding.cbVisited.isEnabled = !item.isVisited
+
+            if (!item.isVisited) {
+                binding.cbVisited.setOnClickListener {
+                    binding.cbVisited.isChecked = false
+                    onCheckInClicked(item)
+                }
+            }
+
+            binding.btnRemovePlace.setOnClickListener {
+                onRemoveClicked(item.linkId)
+            }
+
+            binding.btnRouteToPlace.setOnClickListener {
+                onRouteClicked(item)
             }
         }
     }

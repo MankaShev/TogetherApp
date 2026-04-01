@@ -2,9 +2,12 @@ package com.example.togetherapp.presentation.screens.register
 
 import android.content.Intent
 import android.os.Bundle
+import android.view.View
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.lifecycle.ViewModelProvider
+import com.example.togetherapp.MainActivity
+import com.example.togetherapp.data.local.SessionManager
 import com.example.togetherapp.databinding.ActivityRegisterBinding
 import com.example.togetherapp.presentation.viewmodel.RegisterViewModel
 
@@ -12,6 +15,7 @@ class RegisterActivity : ComponentActivity() {
 
     private lateinit var binding: ActivityRegisterBinding
     private lateinit var viewModel: RegisterViewModel
+    private lateinit var sessionManager: SessionManager
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -20,110 +24,144 @@ class RegisterActivity : ComponentActivity() {
         setContentView(binding.root)
 
         viewModel = ViewModelProvider(this)[RegisterViewModel::class.java]
+        sessionManager = SessionManager.getInstance(this)
 
         setupClickListeners()
         setupObservers()
+        showFormState()
     }
 
     private fun setupClickListeners() {
-        // Кнопка регистрации
         binding.registerButton.setOnClickListener {
-            val name = binding.nameBox.text.toString()
-            val email = binding.emailBox.text.toString()
-            val password = binding.passwordBox.text.toString()
-            val confirmPassword = binding.passwordAgainBox.text.toString()
+            val login = binding.loginBox.text.toString().trim()
+            val password = binding.passwordBox.text.toString().trim()
+            val confirmPassword = binding.passwordAgainBox.text.toString().trim()
 
-            // Базовая валидация
-            if (name.isNotEmpty() && email.isNotEmpty() && password.isNotEmpty() && confirmPassword.isNotEmpty()) {
-                viewModel.register(name, email, password, confirmPassword)
-            } else {
+            if (login.isEmpty() || password.isEmpty() || confirmPassword.isEmpty()) {
                 Toast.makeText(this, "Заполните все поля", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
             }
+
+            viewModel.register(
+                login = login,
+                password = password,
+                confirmPassword = confirmPassword
+            )
         }
 
-        // Текст "Уже есть аккаунт? Войти" - возврат на LoginActivity
         binding.goToLogin.setOnClickListener {
-            finish() // Просто закрываем RegisterActivity, возвращаемся к LoginActivity
+            finish()
         }
 
-        // Кнопка "Исправить" в состоянии ошибки ввода
         binding.btnRetryInput.setOnClickListener {
-            hideAllStates()
-            // Возвращаемся к форме
+            viewModel.resetState()
+            showFormState()
         }
 
-        // Кнопка "Повторить" в состоянии ошибки сети
         binding.btnRetryNetwork.setOnClickListener {
-            hideAllStates()
-            Toast.makeText(this, "Повтор попытки", Toast.LENGTH_SHORT).show()
+            viewModel.resetState()
+            showFormState()
         }
 
-        // Кнопка "Перейти ко входу" в состоянии EmailExists
         binding.btnGoToLogin.setOnClickListener {
-            finish() // Возвращаемся на LoginActivity
+            finish()
         }
     }
 
     private fun setupObservers() {
         viewModel.registerState.observe(this) { state ->
             when (state) {
+                is RegisterViewModel.RegisterState.Idle -> {
+                    showFormState()
+                }
+
                 is RegisterViewModel.RegisterState.Sending -> {
                     showSendingState()
                 }
+
                 is RegisterViewModel.RegisterState.Success -> {
-                    // Успешная регистрация
-                    Toast.makeText(this, "Регистрация успешна! Теперь можно войти", Toast.LENGTH_LONG).show()
-                    finish() // Возвращаемся на LoginActivity
+                    sessionManager.saveUser(state.user)
+
+                    hideAllStates()
+
+                    Toast.makeText(
+                        this,
+                        "Регистрация успешна",
+                        Toast.LENGTH_LONG
+                    ).show()
+
+                    navigateToMain(openInterests = true)
                 }
+
                 is RegisterViewModel.RegisterState.ErrorInput -> {
                     showInputError(state.message)
                 }
+
                 is RegisterViewModel.RegisterState.ErrorNetwork -> {
                     showNetworkError()
                 }
-                is RegisterViewModel.RegisterState.ErrorEmailExists -> {
-                    showEmailExistsError()
+
+                is RegisterViewModel.RegisterState.ErrorUserExists -> {
+                    showUserExistsError(state.message)
+                }
+
+                is RegisterViewModel.RegisterState.ErrorUnknown -> {
+                    showInputError(state.message)
                 }
             }
         }
     }
 
-    // Управление состояниями UI
+    private fun navigateToMain(openInterests: Boolean) {
+        val intent = Intent(this, MainActivity::class.java).apply {
+            putExtra("open_interests", openInterests)
+        }
+        startActivity(intent)
+        finish()
+    }
+
+    private fun showFormState() {
+        hideAllStates()
+        binding.registerFormContainer.visibility = View.VISIBLE
+    }
+
     private fun showSendingState() {
         hideAllStates()
-        binding.stateContainer.visibility = android.view.View.VISIBLE
-        binding.layoutSending.visibility = android.view.View.VISIBLE
+        binding.registerFormContainer.visibility = View.GONE
+        binding.stateContainer.visibility = View.VISIBLE
+        binding.layoutSending.visibility = View.VISIBLE
     }
 
     private fun showInputError(message: String) {
         hideAllStates()
-        binding.stateContainer.visibility = android.view.View.VISIBLE
-        binding.layoutErrorInput.visibility = android.view.View.VISIBLE
+        binding.registerFormContainer.visibility = View.GONE
+        binding.stateContainer.visibility = View.VISIBLE
+        binding.layoutErrorInput.visibility = View.VISIBLE
         binding.registerErrorText.text = message
     }
 
     private fun showNetworkError() {
         hideAllStates()
-        binding.stateContainer.visibility = android.view.View.VISIBLE
-        binding.layoutErrorNetwork.visibility = android.view.View.VISIBLE
+        binding.registerFormContainer.visibility = View.GONE
+        binding.stateContainer.visibility = View.VISIBLE
+        binding.layoutErrorNetwork.visibility = View.VISIBLE
     }
 
-    private fun showEmailExistsError() {
+    private fun showUserExistsError(message: String) {
         hideAllStates()
-        binding.stateContainer.visibility = android.view.View.VISIBLE
-        binding.layoutEmailExists.visibility = android.view.View.VISIBLE
+        binding.registerFormContainer.visibility = View.GONE
+        binding.stateContainer.visibility = View.VISIBLE
+        binding.layoutUserExists.visibility = View.VISIBLE
+        binding.userExistsText.text = message
     }
 
     private fun hideAllStates() {
-        binding.stateContainer.visibility = android.view.View.GONE
-        binding.layoutSending.visibility = android.view.View.GONE
-        binding.layoutErrorInput.visibility = android.view.View.GONE
-        binding.layoutErrorNetwork.visibility = android.view.View.GONE
-        binding.layoutEmailExists.visibility = android.view.View.GONE
-    }
+        binding.registerFormContainer.visibility = View.VISIBLE
+        binding.stateContainer.visibility = View.GONE
 
-    override fun onDestroy() {
-        super.onDestroy()
-        // binding очищается автоматически
+        binding.layoutSending.visibility = View.GONE
+        binding.layoutErrorInput.visibility = View.GONE
+        binding.layoutErrorNetwork.visibility = View.GONE
+        binding.layoutUserExists.visibility = View.GONE
     }
 }

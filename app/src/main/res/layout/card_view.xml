@@ -19,13 +19,15 @@
 
         <ImageView
             android:id="@+id/collectionImage"
-            android:layout_width="108dp"
-            android:layout_height="122dp"
+            android:layout_width="101dp"
+            android:layout_height="73dp"
             android:background="#F8F8F8"
-            android:scaleType="centerCrop"
-            app:layout_constraintTop_toTopOf="parent"
+            android:scaleType="centerInside"
+            android:src="@drawable/collection"
             app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintStart_toStartOf="parent" />
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:tint="@null" />
 
         <TextView
             android:id="@+id/collectionName"
@@ -35,9 +37,10 @@
             android:textColor="@color/black"
             android:textSize="18sp"
             android:textStyle="bold"
-            app:layout_constraintTop_toTopOf="@id/collectionImage"
-            app:layout_constraintStart_toEndOf="@id/collectionImage"
             app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintHorizontal_bias="0.0"
+            app:layout_constraintStart_toEndOf="@id/collectionImage"
+            app:layout_constraintTop_toTopOf="@id/collectionImage"
             tools:text="Название подборки" />
 
         <TextView
@@ -73,10 +76,12 @@
             android:layout_marginTop="4dp"
             android:textColor="@color/black"
             android:textSize="12sp"
-            app:layout_constraintTop_toBottomOf="@id/numPlaces"
-            app:layout_constraintStart_toStartOf="@id/collectionName"
-            app:layout_constraintEnd_toEndOf="@id/collectionName"
             app:layout_constraintBottom_toBottomOf="@id/collectionImage"
+            app:layout_constraintEnd_toEndOf="@id/collectionName"
+            app:layout_constraintHorizontal_bias="0.0"
+            app:layout_constraintStart_toStartOf="@id/collectionName"
+            app:layout_constraintTop_toBottomOf="@id/numPlaces"
+            app:layout_constraintVertical_bias="0.181"
             tools:text="Публичная" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>

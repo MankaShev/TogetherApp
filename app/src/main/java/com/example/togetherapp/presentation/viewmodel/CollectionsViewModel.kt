@@ -4,6 +4,7 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.togetherapp.data.repository.CollectionRepositoryImpl
 import com.example.togetherapp.domain.models.SelectedPlace
 import com.example.togetherapp.domain.repository.CollectionRepository
 import com.example.togetherapp.domain.usecase.AddPlaceToCollectionUseCase
@@ -32,12 +33,11 @@ class CollectionsViewModel(
             try {
                 val collectionsFromDb = collectionRepository.getCollections()
 
-                if (collectionsFromDb.isNotEmpty()) {
-                    _state.value = CollectionsUiState.Success(collectionsFromDb)
+                _state.value = if (collectionsFromDb.isNotEmpty()) {
+                    CollectionsUiState.Success(collectionsFromDb)
                 } else {
-                    _state.value = CollectionsUiState.Empty
+                    CollectionsUiState.Empty
                 }
-
             } catch (e: Exception) {
                 _state.value = CollectionsUiState.Error(
                     e.message ?: "Ошибка загрузки коллекций"
@@ -46,15 +46,40 @@ class CollectionsViewModel(
         }
     }
 
-    fun createCollection(name: String, description: String, accessType: String) {
+    fun createCollection(
+        name: String,
+        description: String,
+        accessType: String
+    ) {
         viewModelScope.launch {
             try {
-                collectionRepository.createCollection(name, description, accessType)
+                val normalizedName = name.trim()
+                val normalizedDescription = description.trim()
+
+                if (normalizedName.isBlank()) {
+                    _state.value = CollectionsUiState.Error(
+                        "Название подборки не может быть пустым"
+                    )
+                    return@launch
+                }
+
+                collectionRepository.createCollection(
+                    name = normalizedName,
+                    description = normalizedDescription,
+                    accessType = accessType,
+                    deadlineAt = null
+                )
+
                 loadCollections()
             } catch (e: Exception) {
-                _state.value = CollectionsUiState.Error(
-                    e.message ?: "Ошибка при создании"
-                )
+                val message = when (e.message) {
+                    CollectionRepositoryImpl.ERROR_COLLECTION_ALREADY_EXISTS ->
+                        "Подборка с таким названием уже существует"
+                    else ->
+                        e.message ?: "Ошибка при создании подборки"
+                }
+
+                _state.value = CollectionsUiState.Error(message)
             }
         }
     }
@@ -85,7 +110,7 @@ class CollectionsViewModel(
                     collectionName = collectionName,
                     collectionId = collectionId,
                     isSuccess = false,
-                    errorMessage = e.message ?: "Ошибка"
+                    errorMessage = e.message ?: "Ошибка добавления места"
                 )
             }
         }

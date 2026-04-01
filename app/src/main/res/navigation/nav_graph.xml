@@ -3,13 +3,13 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/nav_graph"
-    app:startDestination="@id/homeFragment">
+    app:startDestination="@id/exploreFragment">
 
     <fragment
-        android:id="@+id/homeFragment"
-        android:name="com.example.togetherapp.presentation.screens.home.HomeFragment"
-        android:label="Главная"
-        tools:layout="@layout/fragment_home" />
+        android:id="@+id/exploreFragment"
+        android:name="com.example.togetherapp.presentation.screens.home.ExploreFragment"
+        android:label="Explore"
+        tools:layout="@layout/fragment_explore" />
 
     <fragment
         android:id="@+id/mapFragment"
@@ -47,13 +47,89 @@
         android:id="@+id/collectionDetailFragment"
         android:name="com.example.togetherapp.presentation.screens.personalcollection.CollectionDetailFragment"
         android:label="Подборка"
-        tools:layout="@layout/fragment_collection_detail" />
+        tools:layout="@layout/fragment_collection_detail">
+
+        <argument
+            android:name="collectionId"
+            android:defaultValue="-1"
+            app:argType="integer" />
+        <argument
+            android:name="forceOwnerMode"
+            android:defaultValue="false"
+            app:argType="boolean" />
+        <argument
+            android:name="collectionTitle"
+            android:defaultValue=""
+            app:argType="string" />
+
+        <argument
+            android:name="collectionDescription"
+            android:defaultValue=""
+            app:argType="string" />
+
+        <argument
+            android:name="collectionAuthor"
+            android:defaultValue=""
+            app:argType="string" />
+
+        <argument
+            android:name="collectionAuthorId"
+            android:defaultValue="-1"
+            app:argType="integer" />
+
+        <argument
+            android:name="collectionAccessType"
+            android:defaultValue="private"
+            app:argType="string" />
+
+        <argument
+            android:name="collectionDeadlineAt"
+            app:argType="string"
+            app:nullable="true" />
+
+        <argument
+            android:name="isFromExplore"
+            android:defaultValue="false"
+            app:argType="boolean" />
+    </fragment>
 
     <fragment
         android:id="@+id/friendsFragment"
         android:name="com.example.togetherapp.presentation.screens.friends.FriendsFragment"
         android:label="Друзья"
-        tools:layout="@layout/fragment_friends" />
+        tools:layout="@layout/fragment_friends">
+
+        <action
+            android:id="@+id/action_friendsFragment_to_friendProfileFragment"
+            app:destination="@id/friendProfileFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/friendProfileFragment"
+        android:name="com.example.togetherapp.presentation.screens.friends.FriendProfileFragment"
+        android:label="Профиль друга"
+        tools:layout="@layout/fragment_friend_profile">
+
+        <argument
+            android:name="userId"
+            app:argType="integer" />
+
+        <action
+            android:id="@+id/action_friendProfileFragment_to_collectionDetailFragment"
+            app:destination="@id/collectionDetailFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/interestsFragment"
+        android:name="com.example.togetherapp.presentation.screens.interests.InterestsFragment"
+        android:label="Интересы"
+        tools:layout="@layout/fragment_interests">
+
+        <argument
+            android:name="is_edit_mode"
+            android:defaultValue="false"
+            app:argType="boolean" />
+    </fragment>
 
     <fragment
         android:id="@+id/profileFragment"
@@ -66,8 +142,8 @@
             app:destination="@id/friendsFragment" />
 
         <action
-            android:id="@+id/action_profileFragment_to_collectionsFragment"
-            app:destination="@id/collectionsFragment" />
+            android:id="@+id/action_profileFragment_to_interestsFragment"
+            app:destination="@id/interestsFragment" />
     </fragment>
 
 </navigation>
