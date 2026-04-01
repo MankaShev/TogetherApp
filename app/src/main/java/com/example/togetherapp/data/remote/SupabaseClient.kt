@@ -1,10 +1,6 @@
 package com.example.togetherapp.data.remote
-
-
 import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.postgrest.Postgrest
-
-
 object SupabaseClient {
 
 
@@ -14,6 +10,4 @@ object SupabaseClient {
     ) {
         install(Postgrest)
     }
-
-
 }

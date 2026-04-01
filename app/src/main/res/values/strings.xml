@@ -24,4 +24,5 @@
     <string name="sending_data">Отправляем данные</string>
     <string name="please_wait">Пожалуйста, подождите</string>
     <string name="save_collection">Сохранить подборку</string>
+    <string name="add_place_in_collection">Добавить в коллекцию</string>
 </resources>

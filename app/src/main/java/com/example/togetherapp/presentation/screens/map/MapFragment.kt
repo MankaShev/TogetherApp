@@ -3,6 +3,7 @@ package com.example.togetherapp.presentation.screens.map
 import android.Manifest
 import android.annotation.SuppressLint
 import android.content.pm.PackageManager
+import android.graphics.PointF
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -48,6 +49,7 @@ import com.yandex.mapkit.map.InputListener
 import com.yandex.mapkit.map.Map
 import com.yandex.mapkit.map.MapObjectCollection
 import com.yandex.mapkit.map.MapObjectTapListener
+import com.yandex.mapkit.map.PlacemarkMapObject
 import com.yandex.mapkit.map.PolylineMapObject
 import com.yandex.mapkit.map.VisibleRegion
 import com.yandex.mapkit.map.VisibleRegionUtils
@@ -63,9 +65,11 @@ import com.yandex.mapkit.search.SearchOptions
 import com.yandex.mapkit.search.SearchType
 import com.yandex.mapkit.search.Session
 import com.yandex.mapkit.search.Snippet
+import com.yandex.runtime.Error
 import com.yandex.runtime.image.ImageProvider
 import java.util.Calendar
 import java.util.Locale
+import kotlin.math.abs
 
 class MapFragment : Fragment() {
 
@@ -78,30 +82,31 @@ class MapFragment : Fragment() {
     private lateinit var drivingRouter: DrivingRouter
     private lateinit var popularPlacesLoader: PopularPlacesLoader
 
+    private lateinit var sharedViewModel: SharedMapViewModel
+    private lateinit var mapViewModel: MapViewModel
+    private lateinit var sessionManager: SessionManager
+    private lateinit var searchAdapter: SearchAdapter
+
     private var mapInputListener: InputListener? = null
     private var searchSession: Session? = null
     private var photoSession: Session? = null
     private var drivingSession: DrivingSession? = null
 
-    private var polylineMapObject: PolylineMapObject? = null
     private var bottomSheetBehavior: BottomSheetBehavior<View>? = null
+    private var selectedPlacePlacemark: PlacemarkMapObject? = null
+    private var searchResultsCollection: MapObjectCollection? = null
     private var popularPlacesCollection: MapObjectCollection? = null
     private var routeMarkersCollection: MapObjectCollection? = null
-    private var searchResultsCollection: MapObjectCollection? = null
-
-    private lateinit var searchAdapter: SearchAdapter
-    private lateinit var sharedViewModel: SharedMapViewModel
-    private lateinit var mapViewModel: MapViewModel
-    private lateinit var sessionManager: SessionManager
+    private var polylineMapObject: PolylineMapObject? = null
 
     private var currentPlace: SelectedPlace? = null
     private var currentPlaceWorkingHoursText: String? = null
     private var userInterests: List<Interest> = emptyList()
 
-    private var interestSearchRequestId: Int = 0
-    private var isInterestSearchInProgress: Boolean = false
-    private var isRouteBuildInProgress: Boolean = false
-    private var arePopularPlacesHiddenByRoute: Boolean = false
+    private var interestSearchRequestId = 0
+    private var isInterestSearchInProgress = false
+    private var isRouteBuildInProgress = false
+    private var arePopularPlacesHiddenByRoute = false
 
     private val tomskFallbackPoint = Point(56.484645, 84.947649)
 
@@ -112,33 +117,32 @@ class MapFragment : Fragment() {
     private val emulatorLat = 37.4219983
     private val emulatorLon = -122.084
 
-    private val popularPlaceTapListener =
-        MapObjectTapListener { mapObject, _ ->
-            val place = mapObject.userData as? SelectedPlace
-            if (place != null) {
-                openPopularPlace(place)
-                true
-            } else {
-                false
-            }
+    private val popularPlaceTapListener = MapObjectTapListener { mapObject, _ ->
+        val place = mapObject.userData as? SelectedPlace
+        if (place != null) {
+            openPopularPlace(place)
+            true
+        } else {
+            false
         }
+    }
 
-    private val searchResultTapListener =
-        MapObjectTapListener { mapObject, _ ->
-            val point = mapObject.userData as? Point
-            if (point != null) {
-                mapView.mapWindow.map.move(
-                    CameraPosition(point, 17.0f, 0.0f, 0.0f),
-                    Animation(Animation.Type.SMOOTH, 1f),
-                    null
-                )
-                binding.cvSearchResults.visibility = View.GONE
-                startSearch(point)
-                true
-            } else {
-                false
-            }
+    private val searchResultTapListener = MapObjectTapListener { mapObject, _ ->
+        val point = mapObject.userData as? Point
+        if (point != null) {
+            mapView.mapWindow.map.move(
+                CameraPosition(point, 17.0f, 0.0f, 0.0f),
+                Animation(Animation.Type.SMOOTH, 1f),
+                null
+            )
+            hideSearchResults()
+            binding.etSearch.clearFocus()
+            startSearch(point)
+            true
+        } else {
+            false
         }
+    }
 
     private val locationPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -168,22 +172,6 @@ class MapFragment : Fragment() {
         return binding.root
     }
 
-    private fun isPointInRussia(point: Point): Boolean {
-        return point.latitude in russiaMinLat..russiaMaxLat &&
-                point.longitude in russiaMinLon..russiaMaxLon
-    }
-
-    private fun isDefaultEmulatorPoint(point: Point): Boolean {
-        return kotlin.math.abs(point.latitude - emulatorLat) < 0.02 &&
-                kotlin.math.abs(point.longitude - emulatorLon) < 0.02
-    }
-
-    private fun resolveStartPoint(actualPoint: Point): Point {
-        val isEmulatorPoint = isDefaultEmulatorPoint(actualPoint)
-        val inRussia = isPointInRussia(actualPoint)
-        return if (isEmulatorPoint || !inRussia) tomskFallbackPoint else actualPoint
-    }
-
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
@@ -201,18 +189,28 @@ class MapFragment : Fragment() {
 
         popularPlacesLoader = PopularPlacesLoader(searchManager)
 
+        bottomSheetBehavior = BottomSheetBehavior.from(binding.mapContainer.bottomSheet)
+        binding.mapContainer.bottomSheet.post {
+            bottomSheetBehavior?.state = BottomSheetBehavior.STATE_HIDDEN
+        }
+
+        setupRecycler()
+        setupSearch()
+        setupButtons()
+        setupMap()
+
         observeNavigationEvents()
         observeMapState()
         observeRoutePlaces()
         observeRoutePlace()
+
+        hideRouteInfo()
+        loadImageIntoView(null)
         loadUserInterests()
+        loadPopularPlacesOnMap()
+    }
 
-        val bottomSheet = binding.mapContainer.bottomSheet
-        bottomSheetBehavior = BottomSheetBehavior.from(bottomSheet)
-        bottomSheet.post {
-            bottomSheetBehavior?.state = BottomSheetBehavior.STATE_HIDDEN
-        }
-
+    private fun setupRecycler() {
         searchAdapter = SearchAdapter { item ->
             val point = item.obj?.geometry?.firstOrNull()?.point
             if (point != null) {
@@ -221,37 +219,37 @@ class MapFragment : Fragment() {
                     Animation(Animation.Type.SMOOTH, 1f),
                     null
                 )
-                binding.cvSearchResults.visibility = View.GONE
+                hideSearchResults()
                 binding.etSearch.clearFocus()
                 startSearch(point)
             }
         }
 
-        binding.rvSearch.apply {
-            layoutManager = LinearLayoutManager(requireContext())
-            adapter = searchAdapter
-        }
+        binding.rvSearch.layoutManager = LinearLayoutManager(requireContext())
+        binding.rvSearch.adapter = searchAdapter
+    }
 
-        binding.etSearch.setOnQueryTextListener(
-            object : SearchView.OnQueryTextListener {
-                override fun onQueryTextSubmit(query: String?): Boolean {
-                    if (!query.isNullOrEmpty()) {
-                        startTextSearch(query)
-                        binding.etSearch.clearFocus()
-                    }
-                    return true
+    private fun setupSearch() {
+        binding.etSearch.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
+            override fun onQueryTextSubmit(query: String?): Boolean {
+                if (!query.isNullOrBlank()) {
+                    startTextSearch(query)
+                    binding.etSearch.clearFocus()
                 }
-
-                override fun onQueryTextChange(newText: String?): Boolean {
-                    if (newText.isNullOrEmpty()) {
-                        binding.cvSearchResults.visibility = View.GONE
-                        clearSearchResultMarkers()
-                    }
-                    return true
-                }
+                return true
             }
-        )
 
+            override fun onQueryTextChange(newText: String?): Boolean {
+                if (newText.isNullOrEmpty()) {
+                    hideSearchResults()
+                    clearSearchResultMarkers()
+                }
+                return true
+            }
+        })
+    }
+
+    private fun setupButtons() {
         binding.btnMyInterests.setOnClickListener {
             startSearchByUserInterests()
         }
@@ -260,16 +258,78 @@ class MapFragment : Fragment() {
             moveToUserLocation()
         }
 
+        binding.mapContainer.addToCollectionButton.setOnClickListener {
+            val place = currentPlace
+            if (place != null) {
+                sharedViewModel.setSelectedPlace(place)
+                findNavController().navigate(
+                    R.id.collectionsFragment,
+                    Bundle().apply { putBoolean("isAddingMode", true) }
+                )
+            } else {
+                Toast.makeText(
+                    requireContext(),
+                    "Сначала выберите место на карте",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+        }
+
+        binding.mapContainer.btnBuildRouteToPlace.setOnClickListener {
+            val place = currentPlace
+            if (place != null) {
+                sharedViewModel.setRoutePlace(place)
+            } else {
+                Toast.makeText(
+                    requireContext(),
+                    "Сначала выберите место на карте",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+        }
+
         binding.mapContainer.btnClearRoute.setOnClickListener {
             clearCurrentRoute()
         }
+    }
 
-        setupMap()
-        setupAddToCollectionButton()
-        setupBuildRouteButtonForCurrentPlace()
-        hideRouteInfo()
-        loadImageIntoView(null)
-        loadPopularPlacesOnMap()
+    private fun setupMap() {
+        val map = mapView.mapWindow.map
+
+        map.move(
+            CameraPosition(
+                Point(56.471116, 84.946636),
+                16.5f,
+                0.0f,
+                0.0f
+            )
+        )
+
+        mapInputListener = object : InputListener {
+            override fun onMapTap(map: Map, point: Point) {
+                hideSearchResults()
+                clearSearchResultMarkers()
+
+                binding.mapContainer.placeNameText.text = ""
+                binding.mapContainer.placeAddressText.text = ""
+                binding.mapContainer.categoryText.text = ""
+                binding.mapContainer.placeRatingText.text = "Рейтинг: —"
+                binding.mapContainer.placeWorkingHoursText.text = "Часы работы: —"
+                binding.mapContainer.placeDescriptionText.text = "Описание: —"
+
+                currentPlace = null
+                currentPlaceWorkingHoursText = null
+                bottomSheetBehavior?.state = BottomSheetBehavior.STATE_HIDDEN
+                loadImageIntoView(null)
+                removeSelectedMark()
+
+                startSearch(point)
+            }
+
+            override fun onMapLongTap(map: Map, point: Point) = Unit
+        }
+
+        map.addInputListener(mapInputListener!!)
     }
 
     private fun observeNavigationEvents() {
@@ -282,10 +342,10 @@ class MapFragment : Fragment() {
                         Toast.LENGTH_SHORT
                     ).show()
 
-                    binding.mapContainer.addToCollectionButton.text = "Добавлено ✓"
-                    binding.mapContainer.addToCollectionButton.isEnabled = false
-
+                    bottomSheetBehavior?.state = BottomSheetBehavior.STATE_HIDDEN
+                    removeSelectedMark()
                     currentPlace = null
+                    currentPlaceWorkingHoursText = null
                     sharedViewModel.consumeNavigationEvent()
                 }
 
@@ -328,213 +388,12 @@ class MapFragment : Fragment() {
         }
     }
 
-    private fun setupAddToCollectionButton() {
-        binding.mapContainer.addToCollectionButton.setOnClickListener {
-            val place = currentPlace
-            if (place != null) {
-                sharedViewModel.setSelectedPlace(place)
-                findNavController().navigate(
-                    R.id.collectionsFragment,
-                    Bundle().apply { putBoolean("isAddingMode", true) }
-                )
-            } else {
-                Toast.makeText(
-                    requireContext(),
-                    "Сначала выберите место на карте",
-                    Toast.LENGTH_SHORT
-                ).show()
-            }
-        }
+    private fun showSearchResults() {
+        binding.cvSearchResults.visibility = View.VISIBLE
     }
 
-    private fun setupBuildRouteButtonForCurrentPlace() {
-        binding.mapContainer.btnBuildRouteToPlace.setOnClickListener {
-            val place = currentPlace
-            if (place != null) {
-                sharedViewModel.setRoutePlace(place)
-            } else {
-                Toast.makeText(
-                    requireContext(),
-                    "Сначала выберите место на карте",
-                    Toast.LENGTH_SHORT
-                ).show()
-            }
-        }
-    }
-
-    private fun setupMap() {
-        val map = mapView.mapWindow.map
-
-        mapView.post {
-            map.move(
-                CameraPosition(
-                    Point(56.471116, 84.946636),
-                    16.5f,
-                    0.0f,
-                    0.0f
-                )
-            )
-        }
-
-        mapInputListener = object : InputListener {
-            override fun onMapTap(map: Map, point: Point) {
-                binding.mapContainer.placeNameText.text = ""
-                binding.mapContainer.placeAddressText.text = ""
-                binding.mapContainer.categoryText.text = ""
-                binding.mapContainer.placeRatingText.text = "Рейтинг: —"
-                binding.mapContainer.placeWorkingHoursText.text = "Часы работы: —"
-                binding.mapContainer.placeDescriptionText.text = "Описание: —"
-
-                binding.mapContainer.addToCollectionButton.text = "Добавить в коллекцию"
-                binding.mapContainer.addToCollectionButton.isEnabled = true
-
-                currentPlace = null
-                currentPlaceWorkingHoursText = null
-                bottomSheetBehavior?.state = BottomSheetBehavior.STATE_HIDDEN
-                loadImageIntoView(null)
-                clearSearchResultMarkers()
-
-                startSearch(point)
-            }
-
-            override fun onMapLongTap(map: Map, point: Point) = Unit
-        }
-
-        map.addInputListener(mapInputListener!!)
-    }
-
-    private fun hideRouteInfo() {
-        binding.mapContainer.routeInfoContainer.visibility = View.GONE
-        binding.mapContainer.btnClearRoute.visibility = View.GONE
-        binding.mapContainer.tvRouteTitle.text = "Информация о маршруте"
-        binding.mapContainer.tvRouteFrom.text = "Откуда: —"
-        binding.mapContainer.tvRouteTo.text = "Куда: —"
-        binding.mapContainer.tvRouteDuration.text = "Время: —"
-        binding.mapContainer.tvRouteDistance.text = "Расстояние: —"
-        binding.mapContainer.tvRouteWarning.text = ""
-        binding.mapContainer.tvRouteWarning.visibility = View.GONE
-    }
-
-    private fun showRouteInfo(
-        fromText: String,
-        toText: String,
-        durationText: String,
-        distanceText: String,
-        warningText: String? = null
-    ) {
-        binding.mapContainer.routeInfoContainer.visibility = View.VISIBLE
-        binding.mapContainer.btnClearRoute.visibility = View.VISIBLE
-        binding.mapContainer.tvRouteTitle.text = "Информация о маршруте"
-        binding.mapContainer.tvRouteFrom.text = "Откуда: $fromText"
-        binding.mapContainer.tvRouteTo.text = "Куда: $toText"
-        binding.mapContainer.tvRouteDuration.text = "Время: $durationText"
-        binding.mapContainer.tvRouteDistance.text = "Расстояние: $distanceText"
-
-        if (warningText.isNullOrBlank()) {
-            binding.mapContainer.tvRouteWarning.text = ""
-            binding.mapContainer.tvRouteWarning.visibility = View.GONE
-        } else {
-            binding.mapContainer.tvRouteWarning.text = warningText
-            binding.mapContainer.tvRouteWarning.visibility = View.VISIBLE
-        }
-
-        bottomSheetBehavior?.state = BottomSheetBehavior.STATE_EXPANDED
-    }
-
-    private fun formatDistance(distanceMeters: Int): String {
-        return if (distanceMeters < 1000) {
-            "$distanceMeters м"
-        } else {
-            String.format(Locale.getDefault(), "%.1f км", distanceMeters / 1000.0)
-        }
-    }
-
-    private fun formatDuration(durationSeconds: Int): String {
-        val totalMinutes = durationSeconds / 60
-        val hours = totalMinutes / 60
-        val minutes = totalMinutes % 60
-
-        return if (hours > 0) {
-            "${hours} ч ${minutes} мин"
-        } else {
-            "${minutes} мин"
-        }
-    }
-
-    private fun formatTime(hour: Int, minute: Int): String {
-        return String.format(Locale.getDefault(), "%02d:%02d", hour, minute)
-    }
-
-    private fun getStartPointLabel(startPoint: Point): String {
-        return if (
-            kotlin.math.abs(startPoint.latitude - tomskFallbackPoint.latitude) < 0.001 &&
-            kotlin.math.abs(startPoint.longitude - tomskFallbackPoint.longitude) < 0.001
-        ) {
-            "Томск, Ленина 36"
-        } else {
-            "Текущее местоположение"
-        }
-    }
-
-    private fun updateRouteInfo(
-        route: DrivingRoute,
-        startPoint: Point,
-        destinationTitle: String
-    ) {
-        try {
-            val metadata = route.metadata
-            val distanceMeters = metadata.weight.distance.value.toInt()
-            val durationSeconds = metadata.weight.time.value.toInt()
-            val warningText = checkArrivalAgainstWorkingHours(
-                workingHoursText = currentPlaceWorkingHoursText,
-                routeDurationSeconds = durationSeconds
-            )
-
-            showRouteInfo(
-                fromText = getStartPointLabel(startPoint),
-                toText = destinationTitle,
-                durationText = formatDuration(durationSeconds),
-                distanceText = formatDistance(distanceMeters),
-                warningText = warningText
-            )
-
-            if (warningText != null) {
-                Toast.makeText(requireContext(), warningText, Toast.LENGTH_LONG).show()
-            }
-        } catch (_: Exception) {
-            showRouteInfo(
-                fromText = getStartPointLabel(startPoint),
-                toText = destinationTitle,
-                durationText = "не удалось определить",
-                distanceText = "не удалось определить"
-            )
-        }
-    }
-
-    private fun updateCollectionRouteInfo(
-        route: DrivingRoute,
-        startPoint: Point,
-        placesCount: Int
-    ) {
-        try {
-            val metadata = route.metadata
-            val distanceMeters = metadata.weight.distance.value.toInt()
-            val durationSeconds = metadata.weight.time.value.toInt()
-
-            showRouteInfo(
-                fromText = getStartPointLabel(startPoint),
-                toText = "Подборка ($placesCount мест)",
-                durationText = formatDuration(durationSeconds),
-                distanceText = formatDistance(distanceMeters)
-            )
-        } catch (_: Exception) {
-            showRouteInfo(
-                fromText = getStartPointLabel(startPoint),
-                toText = "Подборка ($placesCount мест)",
-                durationText = "не удалось определить",
-                distanceText = "не удалось определить"
-            )
-        }
+    private fun hideSearchResults() {
+        binding.cvSearchResults.visibility = View.GONE
     }
 
     private fun hasLocationPermission(): Boolean {
@@ -565,7 +424,7 @@ class MapFragment : Fragment() {
                     null
                 )
 
-                binding.cvSearchResults.visibility = View.GONE
+                hideSearchResults()
                 binding.etSearch.clearFocus()
                 resetSelectedPlaceState()
                 startNearbySearch(finalPoint)
@@ -587,6 +446,22 @@ class MapFragment : Fragment() {
             }
     }
 
+    private fun isPointInRussia(point: Point): Boolean {
+        return point.latitude in russiaMinLat..russiaMaxLat &&
+                point.longitude in russiaMinLon..russiaMaxLon
+    }
+
+    private fun isDefaultEmulatorPoint(point: Point): Boolean {
+        return abs(point.latitude - emulatorLat) < 0.02 &&
+                abs(point.longitude - emulatorLon) < 0.02
+    }
+
+    private fun resolveStartPoint(actualPoint: Point): Point {
+        val isEmulatorPoint = isDefaultEmulatorPoint(actualPoint)
+        val inRussia = isPointInRussia(actualPoint)
+        return if (isEmulatorPoint || !inRussia) tomskFallbackPoint else actualPoint
+    }
+
     private fun resetSelectedPlaceState() {
         binding.mapContainer.placeNameText.text = ""
         binding.mapContainer.placeAddressText.text = ""
@@ -601,6 +476,7 @@ class MapFragment : Fragment() {
         currentPlaceWorkingHoursText = null
         bottomSheetBehavior?.state = BottomSheetBehavior.STATE_HIDDEN
         loadImageIntoView(null)
+        removeSelectedMark()
     }
 
     private fun loadImageIntoView(url: String?) {
@@ -625,8 +501,7 @@ class MapFragment : Fragment() {
 
     private fun formatWorkingHoursText(metadata: BusinessObjectMetadata): String {
         return try {
-            val workingHours = metadata.getWorkingHours()
-            val text = workingHours?.text
+            val text = metadata.getWorkingHours()?.text
             if (!text.isNullOrBlank()) {
                 "Часы работы: $text"
             } else {
@@ -704,11 +579,35 @@ class MapFragment : Fragment() {
                     }
                 }
 
-                override fun onSearchError(error: com.yandex.runtime.Error) {
+                override fun onSearchError(error: Error) {
                     onResult(null)
                 }
             }
         )
+    }
+
+    private fun showSelectedPlaceMarker(point: Point) {
+        removeSelectedMark()
+
+        selectedPlacePlacemark = mapView.mapWindow.map.mapObjects.addPlacemark().apply {
+            geometry = point
+            setIcon(
+                ImageProvider.fromResource(requireContext(), R.drawable.ic_selected_pin),
+                IconStyle().apply {
+                    anchor = PointF(0.5f, 1.0f)
+                    scale = 0.75f
+                }
+            )
+        }
+    }
+
+    private fun removeSelectedMark() {
+        selectedPlacePlacemark?.let {
+            if (it.isValid) {
+                mapView.mapWindow.map.mapObjects.remove(it)
+            }
+        }
+        selectedPlacePlacemark = null
     }
 
     private fun bindPlaceCard(
@@ -731,6 +630,8 @@ class MapFragment : Fragment() {
             address = address
         )
         currentPlaceWorkingHoursText = workingHoursText
+
+        showSelectedPlaceMarker(point)
 
         binding.mapContainer.addToCollectionButton.text = "Добавить в коллекцию"
         binding.mapContainer.addToCollectionButton.isEnabled = true
@@ -778,6 +679,7 @@ class MapFragment : Fragment() {
                         val name = bizMetadata.name
                         val address = bizMetadata.address.formattedAddress
                         val category = bizMetadata.categories.firstOrNull()?.name ?: ""
+
                         val oid = try {
                             bizMetadata.getOid()
                         } catch (_: Exception) {
@@ -819,6 +721,7 @@ class MapFragment : Fragment() {
                         currentPlaceWorkingHoursText = null
                         bottomSheetBehavior?.state = BottomSheetBehavior.STATE_HIDDEN
                         loadImageIntoView(null)
+                        removeSelectedMark()
 
                         Toast.makeText(
                             requireContext(),
@@ -828,11 +731,12 @@ class MapFragment : Fragment() {
                     }
                 }
 
-                override fun onSearchError(error: com.yandex.runtime.Error) {
+                override fun onSearchError(error: Error) {
                     currentPlace = null
                     currentPlaceWorkingHoursText = null
                     bottomSheetBehavior?.state = BottomSheetBehavior.STATE_HIDDEN
                     loadImageIntoView(null)
+                    removeSelectedMark()
 
                     Toast.makeText(
                         requireContext(),
@@ -871,70 +775,11 @@ class MapFragment : Fragment() {
 
                     if (results.isNotEmpty()) {
                         searchAdapter.submitList(results)
-                        binding.cvSearchResults.visibility = View.VISIBLE
+                        showSearchResults()
                         showSearchResultMarkers(results)
-
-                        val firstResult = results.firstOrNull()
-                        val obj = firstResult?.obj
-                        val point = obj?.geometry?.firstOrNull()?.point
-                        val metadata = obj?.metadataContainer
-                            ?.getItem(BusinessObjectMetadata::class.java)
-
-                        if (metadata != null && point != null) {
-                            val ratingMetadata = obj.metadataContainer
-                                ?.getItem(BusinessRating1xObjectMetadata::class.java)
-
-                            val category = metadata.categories.firstOrNull()?.name ?: ""
-                            val address = metadata.address.formattedAddress
-
-                            val ratingScore = try {
-                                ratingMetadata?.getScore()
-                            } catch (_: Exception) {
-                                null
-                            }
-
-                            val ratingReviews = try {
-                                ratingMetadata?.getReviews() ?: 0
-                            } catch (_: Exception) {
-                                0
-                            }
-
-                            val workingHoursText = formatWorkingHoursText(metadata)
-                            val descriptionText = buildDescriptionText(
-                                metadata = metadata,
-                                category = category,
-                                address = address
-                            )
-
-                            fillBottomSheetWithPlace(
-                                point = point,
-                                name = metadata.name,
-                                address = address,
-                                category = category,
-                                oid = try {
-                                    metadata.getOid()
-                                } catch (_: Exception) {
-                                    null
-                                },
-                                ratingScore = ratingScore,
-                                ratingReviews = ratingReviews,
-                                workingHoursText = workingHoursText,
-                                descriptionText = descriptionText
-                            )
-                        } else {
-                            currentPlace = null
-                            currentPlaceWorkingHoursText = null
-                            bottomSheetBehavior?.state = BottomSheetBehavior.STATE_HIDDEN
-                            loadImageIntoView(null)
-                        }
                     } else {
-                        binding.cvSearchResults.visibility = View.GONE
+                        hideSearchResults()
                         clearSearchResultMarkers()
-                        currentPlace = null
-                        currentPlaceWorkingHoursText = null
-                        bottomSheetBehavior?.state = BottomSheetBehavior.STATE_HIDDEN
-                        loadImageIntoView(null)
-
                         Toast.makeText(
                             requireContext(),
                             "Рядом ничего не найдено",
@@ -943,14 +788,9 @@ class MapFragment : Fragment() {
                     }
                 }
 
-                override fun onSearchError(error: com.yandex.runtime.Error) {
-                    currentPlace = null
-                    currentPlaceWorkingHoursText = null
-                    bottomSheetBehavior?.state = BottomSheetBehavior.STATE_HIDDEN
-                    binding.cvSearchResults.visibility = View.GONE
+                override fun onSearchError(error: Error) {
+                    hideSearchResults()
                     clearSearchResultMarkers()
-                    loadImageIntoView(null)
-
                     Toast.makeText(
                         requireContext(),
                         "Ошибка поиска мест рядом",
@@ -974,30 +814,6 @@ class MapFragment : Fragment() {
         return queries.firstOrNull() ?: "кафе"
     }
 
-    private fun fillBottomSheetWithPlace(
-        point: Point,
-        name: String,
-        address: String,
-        category: String,
-        oid: String?,
-        ratingScore: Float?,
-        ratingReviews: Int,
-        workingHoursText: String,
-        descriptionText: String
-    ) {
-        bindPlaceCard(
-            point = point,
-            name = name,
-            address = address,
-            category = category,
-            oid = oid,
-            ratingScore = ratingScore,
-            ratingReviews = ratingReviews,
-            workingHoursText = workingHoursText,
-            descriptionText = descriptionText
-        )
-    }
-
     private fun startTextSearch(query: String) {
         val searchOptions = SearchOptions().apply {
             searchTypes = SearchType.BIZ.value
@@ -1018,17 +834,27 @@ class MapFragment : Fragment() {
 
                     if (results.isNotEmpty()) {
                         searchAdapter.submitList(results)
-                        binding.cvSearchResults.visibility = View.VISIBLE
+                        showSearchResults()
                         showSearchResultMarkers(results)
                     } else {
-                        binding.cvSearchResults.visibility = View.GONE
+                        hideSearchResults()
                         clearSearchResultMarkers()
+                        Toast.makeText(
+                            requireContext(),
+                            "Ничего не найдено",
+                            Toast.LENGTH_SHORT
+                        ).show()
                     }
                 }
 
-                override fun onSearchError(error: com.yandex.runtime.Error) {
-                    binding.cvSearchResults.visibility = View.GONE
+                override fun onSearchError(error: Error) {
+                    hideSearchResults()
                     clearSearchResultMarkers()
+                    Toast.makeText(
+                        requireContext(),
+                        "Ошибка текстового поиска",
+                        Toast.LENGTH_SHORT
+                    ).show()
                 }
             }
         )
@@ -1064,7 +890,7 @@ class MapFragment : Fragment() {
         if (queries.isEmpty()) {
             Toast.makeText(
                 requireContext(),
-                "Для выбранных интересов не найдено поисковых категорий",
+                "Для выбранных интересов не найдено категорий",
                 Toast.LENGTH_SHORT
             ).show()
             return
@@ -1081,7 +907,7 @@ class MapFragment : Fragment() {
         val requestId = interestSearchRequestId
         isInterestSearchInProgress = true
 
-        binding.cvSearchResults.visibility = View.GONE
+        hideSearchResults()
         binding.etSearch.clearFocus()
 
         Toast.makeText(
@@ -1117,11 +943,9 @@ class MapFragment : Fragment() {
             return
         }
 
-        val query = queries[index]
-
         searchSession?.cancel()
         searchSession = searchManager.submit(
-            query,
+            queries[index],
             VisibleRegionUtils.toPolygon(visibleRegion),
             searchOptions,
             object : Session.SearchListener {
@@ -1141,7 +965,7 @@ class MapFragment : Fragment() {
                     )
                 }
 
-                override fun onSearchError(error: com.yandex.runtime.Error) {
+                override fun onSearchError(error: Error) {
                     if (!isAdded || _binding == null) return
                     if (requestId != interestSearchRequestId) return
 
@@ -1162,23 +986,23 @@ class MapFragment : Fragment() {
         if (!isAdded || _binding == null) return
 
         val uniqueResults = results
-            .distinctBy { item -> buildSearchResultKey(item) }
-            .filter { item -> item.obj?.geometry?.firstOrNull()?.point != null }
+            .distinctBy { buildSearchResultKey(it) }
+            .filter { it.obj?.geometry?.firstOrNull()?.point != null }
             .take(30)
 
         if (uniqueResults.isEmpty()) {
-            binding.cvSearchResults.visibility = View.GONE
+            hideSearchResults()
             clearSearchResultMarkers()
             Toast.makeText(
                 requireContext(),
-                "По вашим интересам ничего не найдено в текущей области карты",
+                "По вашим интересам ничего не найдено",
                 Toast.LENGTH_SHORT
             ).show()
             return
         }
 
         searchAdapter.submitList(uniqueResults)
-        binding.cvSearchResults.visibility = View.VISIBLE
+        showSearchResults()
         showSearchResultMarkers(uniqueResults)
 
         Toast.makeText(
@@ -1233,10 +1057,8 @@ class MapFragment : Fragment() {
     }
 
     private fun loadPopularPlacesOnMap() {
-        val centerPoint = tomskFallbackPoint
-
         popularPlacesLoader.loadPopularPlaces(
-            center = centerPoint,
+            center = tomskFallbackPoint,
             onSuccess = { places ->
                 if (!isAdded || _binding == null) return@loadPopularPlaces
                 showPopularPlaces(places)
@@ -1258,7 +1080,18 @@ class MapFragment : Fragment() {
         popularPlacesCollection = mapObjects.addCollection()
 
         places.forEach { place ->
-            addPopularPlaceMarker(place)
+            val collection = popularPlacesCollection ?: return@forEach
+            collection.addPlacemark().apply {
+                geometry = Point(place.latitude, place.longitude)
+                setIcon(
+                    ImageProvider.fromResource(requireContext(), R.drawable.ic_map_with_point),
+                    IconStyle().apply {
+                        scale = 0.18f
+                    }
+                )
+                userData = place
+                addTapListener(popularPlaceTapListener)
+            }
         }
     }
 
@@ -1277,22 +1110,6 @@ class MapFragment : Fragment() {
         }
     }
 
-    private fun addPopularPlaceMarker(place: SelectedPlace) {
-        val collection = popularPlacesCollection ?: return
-
-        collection.addPlacemark().apply {
-            geometry = Point(place.latitude, place.longitude)
-            setIcon(
-                ImageProvider.fromResource(requireContext(), R.drawable.ic_map_with_point),
-                IconStyle().apply {
-                    scale = 0.18f
-                }
-            )
-            userData = place
-            addTapListener(popularPlaceTapListener)
-        }
-    }
-
     private fun openPopularPlace(place: SelectedPlace) {
         val point = Point(place.latitude, place.longitude)
 
@@ -1305,60 +1122,127 @@ class MapFragment : Fragment() {
         startSearch(point)
     }
 
-    override fun onStart() {
-        super.onStart()
-        MapKitFactory.getInstance().onStart()
-        mapView.onStart()
+    private fun hideRouteInfo() {
+        binding.mapContainer.routeInfoContainer.visibility = View.GONE
+        binding.mapContainer.btnClearRoute.visibility = View.GONE
+        binding.mapContainer.tvRouteTitle.text = "Информация о маршруте"
+        binding.mapContainer.tvRouteFrom.text = "Откуда: —"
+        binding.mapContainer.tvRouteTo.text = "Куда: —"
+        binding.mapContainer.tvRouteDuration.text = "Время: —"
+        binding.mapContainer.tvRouteDistance.text = "Расстояние: —"
+        binding.mapContainer.tvRouteWarning.text = ""
+        binding.mapContainer.tvRouteWarning.visibility = View.GONE
     }
 
-    override fun onStop() {
-        searchSession?.cancel()
-        photoSession?.cancel()
-        drivingSession?.cancel()
-        popularPlacesLoader.cancel()
-        mapView.onStop()
-        MapKitFactory.getInstance().onStop()
-        super.onStop()
+    private fun showRouteInfo(
+        fromText: String,
+        toText: String,
+        durationText: String,
+        distanceText: String,
+        warningText: String? = null
+    ) {
+        binding.mapContainer.routeInfoContainer.visibility = View.VISIBLE
+        binding.mapContainer.btnClearRoute.visibility = View.VISIBLE
+        binding.mapContainer.tvRouteFrom.text = "Откуда: $fromText"
+        binding.mapContainer.tvRouteTo.text = "Куда: $toText"
+        binding.mapContainer.tvRouteDuration.text = "Время: $durationText"
+        binding.mapContainer.tvRouteDistance.text = "Расстояние: $distanceText"
+
+        if (warningText.isNullOrBlank()) {
+            binding.mapContainer.tvRouteWarning.visibility = View.GONE
+            binding.mapContainer.tvRouteWarning.text = ""
+        } else {
+            binding.mapContainer.tvRouteWarning.visibility = View.VISIBLE
+            binding.mapContainer.tvRouteWarning.text = warningText
+        }
+
+        bottomSheetBehavior?.state = BottomSheetBehavior.STATE_EXPANDED
     }
 
-    override fun onDestroyView() {
-        super.onDestroyView()
-
-        mapInputListener?.let {
-            mapView.mapWindow.map.removeInputListener(it)
+    private fun formatDistance(distanceMeters: Int): String {
+        return if (distanceMeters < 1000) {
+            "$distanceMeters м"
+        } else {
+            String.format(Locale.getDefault(), "%.1f км", distanceMeters / 1000.0)
         }
+    }
 
-        searchSession?.cancel()
-        photoSession?.cancel()
-        drivingSession?.cancel()
-        popularPlacesLoader.cancel()
+    private fun formatDuration(durationSeconds: Int): String {
+        val totalMinutes = durationSeconds / 60
+        val hours = totalMinutes / 60
+        val minutes = totalMinutes % 60
+        return if (hours > 0) "${hours} ч ${minutes} мин" else "${minutes} мин"
+    }
 
-        polylineMapObject?.let {
-            mapView.mapWindow.map.mapObjects.remove(it)
+    private fun formatTime(hour: Int, minute: Int): String {
+        return String.format(Locale.getDefault(), "%02d:%02d", hour, minute)
+    }
+
+    private fun getStartPointLabel(startPoint: Point): String {
+        return if (
+            abs(startPoint.latitude - tomskFallbackPoint.latitude) < 0.001 &&
+            abs(startPoint.longitude - tomskFallbackPoint.longitude) < 0.001
+        ) {
+            "Томск, Ленина 36"
+        } else {
+            "Текущее местоположение"
         }
-        polylineMapObject = null
+    }
 
-        routeMarkersCollection?.let {
-            mapView.mapWindow.map.mapObjects.remove(it)
+    private fun updateRouteInfo(
+        route: DrivingRoute,
+        startPoint: Point,
+        destinationTitle: String
+    ) {
+        try {
+            val distanceMeters = route.metadata.weight.distance.value.toInt()
+            val durationSeconds = route.metadata.weight.time.value.toInt()
+
+            val warningText = checkArrivalAgainstWorkingHours(
+                currentPlaceWorkingHoursText,
+                durationSeconds
+            )
+
+            showRouteInfo(
+                fromText = getStartPointLabel(startPoint),
+                toText = destinationTitle,
+                durationText = formatDuration(durationSeconds),
+                distanceText = formatDistance(distanceMeters),
+                warningText = warningText
+            )
+        } catch (_: Exception) {
+            showRouteInfo(
+                fromText = getStartPointLabel(startPoint),
+                toText = destinationTitle,
+                durationText = "не удалось определить",
+                distanceText = "не удалось определить"
+            )
         }
-        routeMarkersCollection = null
+    }
 
-        searchResultsCollection?.let {
-            mapView.mapWindow.map.mapObjects.remove(it)
+    private fun updateCollectionRouteInfo(
+        route: DrivingRoute,
+        startPoint: Point,
+        placesCount: Int
+    ) {
+        try {
+            val distanceMeters = route.metadata.weight.distance.value.toInt()
+            val durationSeconds = route.metadata.weight.time.value.toInt()
+
+            showRouteInfo(
+                fromText = getStartPointLabel(startPoint),
+                toText = "Подборка ($placesCount мест)",
+                durationText = formatDuration(durationSeconds),
+                distanceText = formatDistance(distanceMeters)
+            )
+        } catch (_: Exception) {
+            showRouteInfo(
+                fromText = getStartPointLabel(startPoint),
+                toText = "Подборка ($placesCount мест)",
+                durationText = "не удалось определить",
+                distanceText = "не удалось определить"
+            )
         }
-        searchResultsCollection = null
-
-        popularPlacesCollection?.let {
-            mapView.mapWindow.map.mapObjects.remove(it)
-        }
-        popularPlacesCollection = null
-
-        isInterestSearchInProgress = false
-        isRouteBuildInProgress = false
-        arePopularPlacesHiddenByRoute = false
-        _binding = null
-        currentPlace = null
-        currentPlaceWorkingHoursText = null
     }
 
     private fun retryPendingRouteBuild() {
@@ -1376,14 +1260,7 @@ class MapFragment : Fragment() {
 
     @SuppressLint("MissingPermission")
     private fun buildRouteFromCurrentLocation(places: List<SelectedPlace>) {
-        if (places.isEmpty()) {
-            Toast.makeText(
-                requireContext(),
-                "Нет точек для построения маршрута",
-                Toast.LENGTH_SHORT
-            ).show()
-            return
-        }
+        if (places.isEmpty()) return
 
         if (isRouteBuildInProgress) {
             Toast.makeText(
@@ -1411,36 +1288,32 @@ class MapFragment : Fragment() {
 
                 buildDrivingRoute(
                     startPoint = startPoint,
-                    destinationPlaces = places,
-                    routeTitle = "Подборка (${places.size} мест)",
-                    onSuccess = { route ->
-                        updateCollectionRouteInfo(route, startPoint, places.size)
-                        sharedViewModel.clearRoutePlaces()
+                    destinationPlaces = places
+                ) { route ->
+                    updateCollectionRouteInfo(route, startPoint, places.size)
+                    sharedViewModel.clearRoutePlaces()
 
-                        Toast.makeText(
-                            requireContext(),
-                            "Маршрут по подборке построен",
-                            Toast.LENGTH_SHORT
-                        ).show()
-                    }
-                )
+                    Toast.makeText(
+                        requireContext(),
+                        "Маршрут по подборке построен",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
             }
             .addOnFailureListener {
                 buildDrivingRoute(
                     startPoint = tomskFallbackPoint,
-                    destinationPlaces = places,
-                    routeTitle = "Подборка (${places.size} мест)",
-                    onSuccess = { route ->
-                        updateCollectionRouteInfo(route, tomskFallbackPoint, places.size)
-                        sharedViewModel.clearRoutePlaces()
+                    destinationPlaces = places
+                ) { route ->
+                    updateCollectionRouteInfo(route, tomskFallbackPoint, places.size)
+                    sharedViewModel.clearRoutePlaces()
 
-                        Toast.makeText(
-                            requireContext(),
-                            "Маршрут по подборке построен",
-                            Toast.LENGTH_SHORT
-                        ).show()
-                    }
-                )
+                    Toast.makeText(
+                        requireContext(),
+                        "Маршрут по подборке построен",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
             }
     }
 
@@ -1472,60 +1345,50 @@ class MapFragment : Fragment() {
 
                 buildDrivingRoute(
                     startPoint = startPoint,
-                    destinationPlaces = listOf(place),
-                    routeTitle = place.title,
-                    onSuccess = { route ->
-                        updateRouteInfo(route, startPoint, place.title)
-                        sharedViewModel.clearRoutePlace()
+                    destinationPlaces = listOf(place)
+                ) { route ->
+                    updateRouteInfo(route, startPoint, place.title)
+                    sharedViewModel.clearRoutePlace()
 
-                        Toast.makeText(
-                            requireContext(),
-                            "Маршрут до «${place.title}» построен",
-                            Toast.LENGTH_SHORT
-                        ).show()
-                    }
-                )
+                    Toast.makeText(
+                        requireContext(),
+                        "Маршрут до «${place.title}» построен",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
             }
             .addOnFailureListener {
                 buildDrivingRoute(
                     startPoint = tomskFallbackPoint,
-                    destinationPlaces = listOf(place),
-                    routeTitle = place.title,
-                    onSuccess = { route ->
-                        updateRouteInfo(route, tomskFallbackPoint, place.title)
-                        sharedViewModel.clearRoutePlace()
+                    destinationPlaces = listOf(place)
+                ) { route ->
+                    updateRouteInfo(route, tomskFallbackPoint, place.title)
+                    sharedViewModel.clearRoutePlace()
 
-                        Toast.makeText(
-                            requireContext(),
-                            "Маршрут до «${place.title}» построен",
-                            Toast.LENGTH_SHORT
-                        ).show()
-                    }
-                )
+                    Toast.makeText(
+                        requireContext(),
+                        "Маршрут до «${place.title}» построен",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
             }
     }
 
     private fun buildDrivingRoute(
         startPoint: Point,
         destinationPlaces: List<SelectedPlace>,
-        routeTitle: String,
         onSuccess: (DrivingRoute) -> Unit
     ) {
         if (destinationPlaces.isEmpty()) {
             isRouteBuildInProgress = false
-            Toast.makeText(
-                requireContext(),
-                "Нет точек назначения для маршрута",
-                Toast.LENGTH_SHORT
-            ).show()
             return
         }
 
         clearCurrentRoute(restorePopularPlaces = false)
         hidePopularPlacesOnMap()
         clearSearchResultMarkers()
+        hideSearchResults()
 
-        binding.cvSearchResults.visibility = View.GONE
         bottomSheetBehavior?.state = BottomSheetBehavior.STATE_HIDDEN
         currentPlace = null
 
@@ -1552,14 +1415,11 @@ class MapFragment : Fragment() {
             )
         }
 
-        val drivingOptions = DrivingOptions()
-        val vehicleOptions = VehicleOptions()
-
         drivingSession?.cancel()
         drivingSession = drivingRouter.requestRoutes(
             requestPoints,
-            drivingOptions,
-            vehicleOptions,
+            DrivingOptions(),
+            VehicleOptions(),
             object : DrivingSession.DrivingRouteListener {
                 override fun onDrivingRoutes(routes: MutableList<DrivingRoute>) {
                     isRouteBuildInProgress = false
@@ -1576,20 +1436,14 @@ class MapFragment : Fragment() {
                     }
 
                     val route = routes.first()
-                    renderRoute(
-                        polyline = route.geometry,
-                        startPoint = startPoint,
-                        destinationPlaces = destinationPlaces
-                    )
-
+                    renderRoute(route.geometry, startPoint, destinationPlaces)
                     onSuccess(route)
                 }
 
-                override fun onDrivingRoutesError(error: com.yandex.runtime.Error) {
+                override fun onDrivingRoutesError(error: Error) {
                     isRouteBuildInProgress = false
                     hideRouteInfo()
                     restorePopularPlacesIfNeeded()
-
                     Toast.makeText(
                         requireContext(),
                         "Ошибка построения маршрута",
@@ -1637,10 +1491,7 @@ class MapFragment : Fragment() {
         polylineMapObject = mapView.mapWindow.map.mapObjects.addPolyline(polyline)
     }
 
-    private fun drawRouteMarkers(
-        startPoint: Point,
-        destinationPlaces: List<SelectedPlace>
-    ) {
+    private fun drawRouteMarkers(startPoint: Point, destinationPlaces: List<SelectedPlace>) {
         routeMarkersCollection?.let {
             mapView.mapWindow.map.mapObjects.remove(it)
         }
@@ -1652,11 +1503,8 @@ class MapFragment : Fragment() {
             geometry = startPoint
             setIcon(
                 ImageProvider.fromResource(requireContext(), R.drawable.ic_map),
-                IconStyle().apply {
-                    scale = 0.10f
-                }
+                IconStyle().apply { scale = 0.10f }
             )
-            userData = "route_start"
         }
 
         destinationPlaces.forEachIndexed { index, place ->
@@ -1665,11 +1513,8 @@ class MapFragment : Fragment() {
                 geometry = Point(place.latitude, place.longitude)
                 setIcon(
                     ImageProvider.fromResource(requireContext(), R.drawable.ic_map_with_point),
-                    IconStyle().apply {
-                        scale = if (isLast) 0.14f else 0.11f
-                    }
+                    IconStyle().apply { scale = if (isLast) 0.14f else 0.11f }
                 )
-                userData = if (isLast) "route_end" else place
             }
         }
     }
@@ -1690,14 +1535,8 @@ class MapFragment : Fragment() {
             if (point.longitude > maxLon) maxLon = point.longitude
         }
 
-        val center = Point(
-            (minLat + maxLat) / 2.0,
-            (minLon + maxLon) / 2.0
-        )
-
-        val latDelta = maxLat - minLat
-        val lonDelta = maxLon - minLon
-        val maxDelta = maxOf(latDelta, lonDelta)
+        val center = Point((minLat + maxLat) / 2.0, (minLon + maxLon) / 2.0)
+        val maxDelta = maxOf(maxLat - minLat, maxLon - minLon)
 
         val zoom = when {
             maxDelta < 0.01 -> 15.5f
@@ -1721,7 +1560,6 @@ class MapFragment : Fragment() {
         if (workingHoursText.isNullOrBlank()) return null
 
         val normalized = workingHoursText.lowercase(Locale.getDefault())
-
         if (normalized.contains("круглосуточно")) return null
         if (normalized.contains("закрыто")) return "Место сейчас закрыто"
 
@@ -1776,5 +1614,64 @@ class MapFragment : Fragment() {
         }
 
         return null
+    }
+
+    override fun onStart() {
+        super.onStart()
+        MapKitFactory.getInstance().onStart()
+        mapView.onStart()
+    }
+
+    override fun onStop() {
+        searchSession?.cancel()
+        photoSession?.cancel()
+        drivingSession?.cancel()
+        popularPlacesLoader.cancel()
+        mapView.onStop()
+        MapKitFactory.getInstance().onStop()
+        super.onStop()
+    }
+
+    override fun onDestroyView() {
+        mapInputListener?.let {
+            mapView.mapWindow.map.removeInputListener(it)
+        }
+
+        searchSession?.cancel()
+        photoSession?.cancel()
+        drivingSession?.cancel()
+        popularPlacesLoader.cancel()
+
+        polylineMapObject?.let {
+            mapView.mapWindow.map.mapObjects.remove(it)
+        }
+        polylineMapObject = null
+
+        routeMarkersCollection?.let {
+            mapView.mapWindow.map.mapObjects.remove(it)
+        }
+        routeMarkersCollection = null
+
+        searchResultsCollection?.let {
+            mapView.mapWindow.map.mapObjects.remove(it)
+        }
+        searchResultsCollection = null
+
+        popularPlacesCollection?.let {
+            mapView.mapWindow.map.mapObjects.remove(it)
+        }
+        popularPlacesCollection = null
+
+        removeSelectedMark()
+
+        isInterestSearchInProgress = false
+        isRouteBuildInProgress = false
+        arePopularPlacesHiddenByRoute = false
+
+        _binding = null
+        currentPlace = null
+        currentPlaceWorkingHoursText = null
+
+        super.onDestroyView()
     }
 }
